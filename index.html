@@ -22,7 +22,7 @@
   .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
   .frame{background:var(--frame);border-radius:calc(var(--cw)*.35);padding:calc(var(--cw)*.55);display:inline-block;
     box-shadow:0 0 0 1px #000, 0 20px 60px rgba(0,0,0,.5)}
-  .grid{display:grid;grid-template-columns:repeat(22,var(--cw));grid-auto-rows:calc(var(--cw)*1.32);gap:calc(var(--cw)*.12)}
+  .grid{display:grid;grid-template-columns:repeat(30,var(--cw));grid-auto-rows:calc(var(--cw)*1.32);gap:calc(var(--cw)*.12)}
   .cell{position:relative;background:var(--tile);border-radius:calc(var(--cw)*.08);overflow:hidden;perspective:400px}
   .cell::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(1px,calc(var(--cw)*.03));background:rgba(0,0,0,.55);z-index:2}
   .flap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -31,24 +31,7 @@
   @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(80deg);filter:brightness(.6)}100%{transform:rotateX(0)}}
   .flap.c-R{background:var(--R)} .flap.c-O{background:var(--O)} .flap.c-Y{background:var(--Y)} .flap.c-G{background:var(--G)}
   .flap.c-B{background:var(--B)} .flap.c-V{background:var(--V)} .flap.c-W{background:var(--W)} .flap.c-K{background:var(--K)}
-  /* split layout: board glides left + shrinks, photo card slides in */
-  body.tv{--u:min(1vw,1.78vh)}
-  #boardHost{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transform-origin:center center;
-    transition:transform .9s cubic-bezier(.65,0,.35,1)}
-  .panel{position:absolute;right:calc(var(--u)*3);top:50%;width:calc(var(--u)*30);max-height:92vh;
-    opacity:0;transform:translate(6vw,-50%);pointer-events:none;
-    transition:opacity .45s ease, transform .6s cubic-bezier(.2,.8,.2,1)}
-  .stage.split .panel{opacity:1;transform:translate(0,-50%);transition-delay:.55s}
-  .pcard{background:#fbf6ec;color:#1d1b18;border-radius:calc(var(--u)*1.6);padding:calc(var(--u)*1.8);display:flex;flex-direction:column;gap:calc(var(--u)*.45);box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:92vh;overflow:hidden}
-  .pimg{background:#fff;border-radius:calc(var(--u)*1);height:calc(var(--u)*22);flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:calc(var(--u)*.6)}
-  .pimg img{max-width:92%;max-height:92%;object-fit:contain}
-  .ptag{align-self:flex-start;color:#fff;font-family:"Barlow Condensed",sans-serif;font-weight:700;letter-spacing:.12em;font-size:calc(var(--u)*1.25);padding:calc(var(--u)*.3) calc(var(--u)*.9);border-radius:99px;text-transform:uppercase}
-  .pbrand{font-size:calc(var(--u)*1.1);font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#7a6f63;margin-top:calc(var(--u)*.3)}
-  .pname{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:calc(var(--u)*2.6);line-height:1.02;text-transform:uppercase}
-  .pname .re{display:inline-block;transform:scaleX(-1)}
-  .psize{font-size:calc(var(--u)*1);color:#7a6f63}
-  .pdesc{font-size:calc(var(--u)*1.05);line-height:1.45;margin-top:calc(var(--u)*.3);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-  .pprice{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:calc(var(--u)*3.2);color:#e0401c}
+  .flap.ph{background-color:#fff;background-repeat:no-repeat}
   .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
   body.tv:hover .hint{opacity:1}
 
@@ -79,7 +62,7 @@
   .card{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
   .card.off{opacity:.45}
   .card .mini{--cw:8px;flex:none;cursor:pointer}
-  @media (max-width:520px){.card{flex-direction:column;align-items:stretch}.card .mini{--cw:calc((100vw - 90px)/24.6)}}
+  @media (max-width:520px){.card{flex-direction:column;align-items:stretch}.card .mini{--cw:calc((100vw - 90px)/34.7)}}
   .card .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
   .card .kind{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
   .card .when{font-size:12px;color:var(--muted)}
@@ -105,7 +88,7 @@
   .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;z-index:10}
   .sheet{background:#121216;border:1px solid var(--line);border-radius:18px;width:100%;max-width:640px;padding:18px}
   .sheet h3{margin:0 0 12px;font-size:18px;display:flex;align-items:center;gap:8px}
-  .sheet .pv{--cw:clamp(9px,calc((100vw - 90px)/24.6),24px);display:flex;justify-content:center;margin-bottom:6px}
+  .sheet .pv{--cw:clamp(9px,calc((100vw - 90px)/34.7),24px);display:flex;justify-content:center;margin-bottom:6px}
   .warn{font-size:13px;color:var(--O);min-height:18px;text-align:center;margin-bottom:6px}
   .field{display:flex;flex-direction:column;gap:6px;margin-top:14px}
   .field > span{font-size:13px;font-weight:600}
@@ -141,10 +124,10 @@ const FIREBASE_CONFIG = {
   appId: ""
 };
 
-const COLS = 22, ROWS = 6;
+const COLS = 30, ROWS = 12;
 const COLORS = ['R','O','Y','G','B','V','W'];
 const CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$()-+&=;:'\"%,./?°".split('');
-const FLAPS = CHARS.concat(['R','O','Y','G','B','V','W','K'].map(c => '{'+c+'}'), ['{E}']);
+const FLAPS = CHARS.concat(['R','O','Y','G','B','V','W','K'].map(c => '{'+c+'}'), ['{E}','{I}']);
 
 const KINDS = {
   spotlight:{label:'Product Spotlight', help:'Feature a product', color:'B'},
@@ -164,17 +147,17 @@ const DEFAULT_STATE = {
   settings:{ seconds:15, clock:true },
   messages:[
     {id:uid(), kind:'note', on:true, until:'', color:'G', f:{lines:['WELCOME TO','THE TRAVEL AGENCY','SOHO','','','']}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'G', f:{"cat": "Flower", "head": "TOP FLOWER", "name": "Jack Herer", "brand": "Ruby Farms", "price": "42", "note": "", "size": "3.5g \u00b7 Sativa", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/10a6eed0-b0a4-4c8d-b897-9f2f245a52b9.jpg", "desc": "Legendary sativa named after the cannabis activist. Uplifting, clear-headed and creative, with a spicy, piney aroma."}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'Y', f:{"cat": "Pre-Roll", "head": "TOP PRE-ROLL", "name": "Super Lemon Haze 7pk", "brand": "Ruby Farms Doobies", "price": "38", "note": "", "size": "7 pre-rolls \u00b7 3.5g \u00b7 Sativa-Hybrid", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/5d7f3e4a-a3a7-4be3-8f49-6c743afb9023.jpg", "desc": "Hand-rolled Ruby Farms flower in natural, unbleached hemp wraps, packed in a sleek copper tin. Zesty, citrusy and a little sweet."}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{"cat": "Vape", "head": "TOP VAPE", "name": "Guava Belts", "brand": "Bloom Classic", "price": "45", "note": "", "size": "1g all-in-one \u00b7 Hybrid", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/a5f7ea25-5e35-4dce-ad31-dbde9a198a0b.jpg", "desc": "Juicy tropical sweetness with hints of berry. Creative and energetic while keeping the vibe light and social."}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "Edible", "head": "TOP EDIBLE", "name": "Blackberry Dream", "brand": "Camino Sours", "price": "30", "note": "", "size": "10 gummies \u00b7 10mg each \u00b7 1:1:1", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/ecb403ab-d573-48d7-be8f-b61b58ec7cb5.jpg", "desc": "THC and CBN with chamomile and lavender extracts in a subtly sour blackberry gummy. Take one and call it a night."}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'O', f:{"cat": "Concentrate", "head": "TOP CONCENTRATE", "name": "Charas Hash", "brand": "Stone Road", "price": "36", "note": "", "size": "1g \u00b7 Sativa blend", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/015f9587-1c0f-4cdb-aa9f-83cbfbaeb57a.jpg", "desc": "Solventless hash made from only flower, water and ice. Earthy and piney with soft citrus, for energy and focus without the fog."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'G', f:{"cat": "Flower", "head": "TOP FLOWER", "name": "Jack Herer", "brand": "Ruby Farms", "price": "42", "note": "", "size": "3.5g \u00b7 Sativa", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/10a6eed0-b0a4-4c8d-b897-9f2f245a52b9.jpg", "desc": "Legendary sativa named after the cannabis activist. Uplifting, clear-headed and creative, with a spicy pine aroma."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'Y', f:{"cat": "Pre-Roll", "head": "TOP PRE-ROLL", "name": "Super Lemon Haze 7pk", "brand": "Ruby Farms Doobies", "price": "38", "note": "", "size": "7 pre-rolls \u00b7 3.5g \u00b7 Sativa-Hybrid", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/5d7f3e4a-a3a7-4be3-8f49-6c743afb9023.jpg", "desc": "Hand-rolled Ruby Farms flower in hemp wraps. Zesty, citrusy and a little sweet."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{"cat": "Vape", "head": "TOP VAPE", "name": "Guava Belts", "brand": "Bloom Classic", "price": "45", "note": "", "size": "1g all-in-one \u00b7 Hybrid", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/a5f7ea25-5e35-4dce-ad31-dbde9a198a0b.jpg", "desc": "Juicy tropical sweetness with hints of berry. Creative and energetic, light and social."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "Edible", "head": "TOP EDIBLE", "name": "Blackberry Dream", "brand": "Camino Sours", "price": "30", "note": "", "size": "10 gummies \u00b7 10mg each \u00b7 1:1:1", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/ecb403ab-d573-48d7-be8f-b61b58ec7cb5.jpg", "desc": "THC and CBN with chamomile and lavender in a subtly sour gummy. Take one and call it a night."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'O', f:{"cat": "Concentrate", "head": "TOP CONCENTRATE", "name": "Charas Hash", "brand": "Stone Road", "price": "36", "note": "", "size": "1g \u00b7 Sativa blend", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/015f9587-1c0f-4cdb-aa9f-83cbfbaeb57a.jpg", "desc": "Solventless hash made from flower, water and ice. Earthy pine with soft citrus."}},
     {id:uid(), kind:'note', on:true, until:'', color:'Y', f:{lines:['MUST BE 21+ WITH','VALID ID TO PURCHASE','','','','']}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{"cat": "Beverage", "head": "TOP DRINK", "name": "Squeeze Lemon Lime", "brand": "Select", "price": "30", "note": "", "size": "100mg drops", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/a84d225b-fdbd-425e-938c-801b0baa37ff.jpg", "desc": "Water-soluble cannabis drops that mix right in. Add to anything from sports drinks to smoothies to sweet tea."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{"cat": "Beverage", "head": "TOP DRINK", "name": "Squeeze Lemon Lime", "brand": "Select", "price": "30", "note": "", "size": "100mg drops", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/a84d225b-fdbd-425e-938c-801b0baa37ff.jpg", "desc": "Water-soluble drops. Mix into sports drinks, smoothies or sweet tea."}},
     {id:uid(), kind:'spotlight', on:true, until:'', color:'G', f:{"cat": "Tincture", "head": "TOP TINCTURE", "name": "Max Strength", "brand": "Head & Heal", "price": "116", "note": "", "size": "Tincture", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/f4150106-cc33-4599-91e6-0b4fd38b11c4.jpg", "desc": "The strongest concentration of THC allowed in an edible product in New York State."}},
     {id:uid(), kind:'spotlight', on:true, until:'', color:'O', f:{"cat": "Topical", "head": "TOP TOPICAL", "name": "Releaf Balm 3:1 50ml", "brand": "Papa & Barkley", "price": "90", "note": "", "size": "50ml \u00b7 3:1 CBD:THC", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/dd5aab6b-75a5-43a2-b9a7-4bf1186996e0.jpg", "desc": "A rich, CBD-forward 3:1 balm from Papa & Barkley."}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "CBD", "head": "TOP CBD", "name": "Pleasure Oil", "brand": "Her Highness", "price": "60", "note": "", "size": "Hemp-derived CBD", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/8deafc7c-76d6-4015-a76f-58c4eee1fcb4.jpg", "desc": "Ultra-premium, hemp-derived CBD oil made with a professional herbalist. Not a lube: ask your budtender."}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'R', f:{"cat": "Accessory", "head": "TOP ACCESSORY", "name": "TTA Lighter", "brand": "The Travel Agency", "price": "3", "note": "", "size": "Bic lighter", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/7b84f406-9c47-4016-85cc-63e709445fab.jpg", "desc": "This standard size Bic is anything but standard. Carry it and you'll know you've arrived."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "CBD", "head": "TOP CBD", "name": "Pleasure Oil", "brand": "Her Highness", "price": "60", "note": "", "size": "Hemp-derived CBD", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/8deafc7c-76d6-4015-a76f-58c4eee1fcb4.jpg", "desc": "Ultra-premium hemp-derived CBD oil made with a professional herbalist."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'R', f:{"cat": "Accessory", "head": "TOP ACCESSORY", "name": "TTA Lighter", "brand": "The Travel Agency", "price": "3", "note": "", "size": "Bic lighter", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/7b84f406-9c47-4016-85cc-63e709445fab.jpg", "desc": "This standard size Bic is anything but standard. You\u0027ll know you\u0027ve arrived."}},
     {id:uid(), kind:'fact', on:false, until:'', color:'V', f:{fact:'Add a fun fact about The Travel Agency here'}}
   ]
 };
@@ -204,7 +187,7 @@ function compose(m){
 /* ---------------- Text -> 6x22 grid ---------------- */
 function normalize(s){
   return String(s||'').toUpperCase().replace(/[‘’]/g,"'").replace(/[“”]/g,'"')
-    .replace(/[–—]/g,'-').replace(/…/g,'...')
+    .replace(/[–—·]/g,'-').replace(/…/g,'...')
     // Brand touch: backwards E's whenever TRAVEL AGENCY is spelled out
     .replace(/TRAVEL(\s+)AGENCY/g,'TRAV{E}L$1AG{E}NCY');
 }
@@ -213,13 +196,13 @@ function tokenize(line){
   while((m=re.exec(line))){ if(m[1]) out.push('{'+m[1]+'}'); else out.push(CHARS.includes(m[0])?m[0]:' '); }
   return out;
 }
-function wrap(tokens){
-  if(tokens.length<=COLS) return [tokens];
+function wrap(tokens, W=COLS){
+  if(tokens.length<=W) return [tokens];
   const lines=[]; let cur=[], word=[];
   const flush=()=>{ if(!word.length) return;
-    if(cur.length && cur.length+1+word.length>COLS){ lines.push(cur); cur=[]; }
+    if(cur.length && cur.length+1+word.length>W){ lines.push(cur); cur=[]; }
     if(cur.length) cur.push(' ');
-    while(word.length>COLS){ lines.push(word.slice(0,COLS)); word=word.slice(COLS); }
+    while(word.length>W){ lines.push(word.slice(0,W)); word=word.slice(W); }
     cur=cur.concat(word); word=[]; };
   tokens.forEach(t=>{ if(t===' ') flush(); else word.push(t); });
   flush(); if(cur.length) lines.push(cur);
@@ -237,6 +220,53 @@ function layout(text){
   return {grid, overflow};
 }
 
+
+/* ---------------- Spotlight with photo: picture tiles on the left, text on the right ---------------- */
+const PHOTO={r0:1,c0:1,rows:10,cols:8}, TXT={r0:0,c0:11,rows:12,cols:18};
+const AR={}; // image aspect ratios (h/w), filled as photos load
+function loadAR(url, cb){ if(!url || AR[url]) { cb&&cb(); return; } const i=new Image(); i.onload=()=>{ AR[url]=i.naturalHeight/i.naturalWidth||1; cb&&cb(); }; i.onerror=()=>{ cb&&cb(); }; i.src=url; }
+function spotGrid(m){
+  const f=m.f||{}, c=m.color||'', W=TXT.cols;
+  const grid=Array.from({length:ROWS},()=>Array(COLS).fill(' '));
+  const RW=PHOTO.cols*1.12-.12, RH=PHOTO.rows*1.44-.12, ar=AR[f.img]||1;
+  let BW=RW, BH=RW*ar; if(BH>RH){ BH=RH; BW=RH/ar; }
+  const ox=(RW-BW)/2, oy=(RH-BH)/2;
+  const photo={url:f.img, cells:{}};
+  for(let i=0;i<PHOTO.rows;i++) for(let j=0;j<PHOTO.cols;j++){
+    const y=i*1.44, x=j*1.12;
+    if(y+1.32<=oy+.05 || y>=oy+BH-.05 || x+1<=ox+.05 || x>=ox+BW-.05) continue;
+    const r=PHOTO.r0+i, cc=PHOTO.c0+j; grid[r][cc]='{I}';
+    photo.cells[r*COLS+cc]=`background-image:url("${f.img}");background-size:calc(var(--cw)*${BW.toFixed(3)}) calc(var(--cw)*${BH.toFixed(3)});background-position:calc(var(--cw)*${(ox-x).toFixed(3)}) calc(var(--cw)*${(oy-y).toFixed(3)})`;
+  }
+  const T=s=>tokenize(normalize(s||''));
+  const hd=(f.head||((f.cat||'')+' PICK')).trim();
+  const head=T(c?`{${c}} ${hd} {${c}}`:hd);
+  const name=wrap(T(f.name),W), brand=f.brand?wrap(T(f.brand),W):[], size=f.size?wrap(T(f.size),W):[];
+  const price=f.price?T('$'+String(f.price).replace(/^\$/,'')):null;
+  let desc=f.desc?wrap(T(f.desc),W):[];
+  let top=[head,[]].concat(name,brand,size);
+  let room=TXT.rows-top.length-(price?2:0)-1;
+  if(desc.length>room && size.length){ top=top.slice(0,top.length-size.length); room+=size.length; }
+  if(desc.length>room){
+    // keep as many whole sentences as fit; otherwise cut on a word with "..."
+    const sents=normalize(f.desc).match(/[^.!?]+[.!?]+/g)||[];
+    let best=[];
+    for(let k=1;k<=sents.length;k++){ const w=wrap(T(sents.slice(0,k).join('').trim()),W); if(w.length<=room) best=w; else break; }
+    if(best.length) desc=best;
+    else { desc=desc.slice(0,Math.max(0,room)); const l=desc[desc.length-1]; if(l){ while(l.length>W-3) l.pop(); while(l.length && l[l.length-1]!==' ') l.pop(); l.push('.','.','.'); } }
+  }
+  let out=top.concat(desc.length?[[]].concat(desc):[]);
+  if(price) out=out.concat([[],price]);
+  const startRow=TXT.r0+Math.max(0,Math.floor((TXT.rows-out.length)/2));
+  out.slice(0,TXT.rows).forEach((l,i)=>{ l.slice(0,W).forEach((t,j)=>{ grid[startRow+i][TXT.c0+j]=t; }); });
+  return {grid, photo, overflow:false};
+}
+function render(m){
+  if(m.clock) return layout(clockText());
+  if(m.kind==='spotlight' && m.f && m.f.img) return spotGrid(m);
+  return layout(compose(m));
+}
+
 /* ---------------- Board renderer ---------------- */
 function makeBoard(container){
   const frame=document.createElement('div'); frame.className='frame';
@@ -245,10 +275,11 @@ function makeBoard(container){
   for(let i=0;i<ROWS*COLS;i++){
     const cell=document.createElement('div'); cell.className='cell';
     const f=document.createElement('div'); f.className='flap'; cell.appendChild(f); g.appendChild(cell);
-    cells.push({el:f, cur:' ', queue:[], delay:0});
+    cells.push({el:f, cur:' ', curBg:'', bg:'', queue:[], delay:0});
   }
-  const paint=(cell,tok)=>{ cell.cur=tok;
-    if(tok==='{E}'){ cell.el.className='flap'; cell.el.innerHTML='<span style="display:inline-block;transform:scaleX(-1)">E</span>'; }
+  const paint=(cell,tok)=>{ cell.cur=tok; cell.el.style.cssText='';
+    if(tok==='{I}'){ cell.curBg=cell.bg; cell.el.className='flap ph'; cell.el.textContent=''; cell.el.style.cssText=cell.bg; }
+    else if(tok==='{E}'){ cell.el.className='flap'; cell.el.innerHTML='<span style="display:inline-block;transform:scaleX(-1)">E</span>'; }
     else if(tok.length>1){ cell.el.className='flap c-'+tok[1]; cell.el.textContent=''; }
     else { cell.el.className='flap'; cell.el.textContent=tok===' '?'':tok; } };
   let timer=null;
@@ -259,13 +290,15 @@ function makeBoard(container){
       paint(cell, cell.queue.shift()); cell.el.classList.remove('go'); void cell.el.offsetWidth; cell.el.classList.add('go'); });
     if(!busy){ clearInterval(timer); timer=null; }
   }
-  return { show(grid, instant){
+  return { show(grid, instant, photo){
     cells.forEach((cell,i)=>{
       const target=grid[Math.floor(i/COLS)][i%COLS]; cell.queue=[];
+      cell.bg=(target==='{I}' && photo) ? (photo.cells[i]||'') : '';
       if(instant){ paint(cell,target); return; }
-      if(target===cell.cur) return;
-      const from=FLAPS.indexOf(cell.cur), to=FLAPS.indexOf(target);
-      const dist=(to-from+FLAPS.length)%FLAPS.length, steps=Math.min(dist, 10+Math.floor(Math.random()*8));
+      if(target===cell.cur && (target!=='{I}' || cell.bg===cell.curBg)) return;
+      let from=FLAPS.indexOf(cell.cur), to=FLAPS.indexOf(target);
+      if(from===to) from=(to-12+FLAPS.length)%FLAPS.length;
+      const dist=(to-from+FLAPS.length)%FLAPS.length||FLAPS.length, steps=Math.min(dist, 10+Math.floor(Math.random()*8));
       for(let s=steps-1;s>=0;s--) cell.queue.push(FLAPS[(to-s+FLAPS.length)%FLAPS.length]);
       cell.delay=(i%COLS)+Math.floor(Math.random()*4);
     });
@@ -275,7 +308,7 @@ function makeBoard(container){
 
 /* ---------------- Storage ---------------- */
 const USE_FB = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('PASTE') && window.firebase;
-const LS_KEY='sohofloor_v3';
+const LS_KEY='sohofloor_v4';
 let docRef=null;
 const store={
   listen(cb){
@@ -304,64 +337,26 @@ function clockText(){
 }
 function startTV(){
   document.body.className='tv';
-  document.getElementById('app').innerHTML=`<div class="stage" id="stage"><div id="boardHost"></div>
-    <div class="panel" id="panel"><div class="pcard">
-      <div class="pimg"><img id="pImg" alt=""></div>
-      <div class="ptag" id="pTag"></div>
-      <div class="pbrand" id="pBrand"></div>
-      <div class="pname" id="pName"></div>
-      <div class="psize" id="pSize"></div>
-      <div class="pdesc" id="pDesc"></div>
-      <div class="pprice" id="pPrice"></div>
-    </div></div></div><div class="hint">Click for fullscreen · arrow keys to skip</div>`;
-  const stage=document.getElementById('stage'), panel=document.getElementById('panel');
-  let withPanel=false;
-  const host=document.getElementById('boardHost');
-  // Board is always built at full size; the split view just scales it down and slides it left (smooth, no reflow).
-  const place=()=>{
-    if(!withPanel){ host.style.transform='translate(-50%,-50%)'; return; }
-    const W=innerWidth, u=Math.min(W/100, innerHeight*1.78/100);
-    const panelLeft=W-u*3-u*30, gap=u*3, avail=panelLeft-gap-u*3;
-    const bw=host.offsetWidth, sc=Math.min(1, avail/bw);
-    const cx=u*3+avail/2, dx=cx-W/2;
-    host.style.transform=`translate(calc(-50% + ${dx}px),-50%) scale(${sc})`;
-  };
+  document.getElementById('app').innerHTML='<div class="stage" id="stage"></div><div class="hint">Click for fullscreen · arrow keys to skip</div>';
   const fit=()=>{
-    const byW=innerWidth*.94/(COLS*1.12+1.1), byH=innerHeight*.9/(ROWS*1.32+(ROWS-1)*.12+1.1);
+    const byW=innerWidth*.96/(COLS*1.12+1.1), byH=innerHeight*.94/(ROWS*1.44-.12+1.1);
     document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px');
-    place();
   };
-  const board=makeBoard(host);
   fit(); addEventListener('resize',fit);
+  const board=makeBoard(document.getElementById('stage'));
   let state=null, idx=-1, timer=null;
   const playlist=()=>{ const l=(state.messages||[]).filter(isLive); if(state.settings?.clock && l.length) l.push({clock:true}); return l; };
-  function showPanel(m){
-    const f=m && m.kind==='spotlight' ? m.f||{} : null;
-    const on=!!(f && f.img);
-    if(on){
-      document.getElementById('pImg').src=f.img;
-      document.getElementById('pTag').textContent=(f.head||((f.cat||'')+' pick')).trim();
-      document.getElementById('pTag').style.background='var(--'+(m.color||'R')+')';
-      document.getElementById('pBrand').textContent=f.brand||'';
-      document.getElementById('pName').innerHTML=esc(f.name||'').replace(/Travel(\s+)Agency/gi,'Trav<span class="re">e</span>l$1Ag<span class="re">e</span>ncy');
-      document.getElementById('pSize').textContent=f.size||'';
-      document.getElementById('pDesc').textContent=f.desc||'';
-      document.getElementById('pPrice').textContent=f.price?'$'+String(f.price).replace(/^\$/,''):'';
-    }
-    if(on!==withPanel){ withPanel=on; stage.classList.toggle('split',on); place(); }
-  }
   function next(step=1){
     clearTimeout(timer); const list=playlist();
-    if(!list.length){ showPanel(null); board.show(layout("THE TRAVEL AGENCY\nSOHO").grid); return; }
+    if(!list.length){ board.show(layout("THE TRAVEL AGENCY\nSOHO").grid); return; }
     idx=(idx+step+list.length)%list.length;
     const m=list[idx];
-    showPanel(m.clock?null:m);
-    board.show(layout(m.clock?clockText():compose(m)).grid);
+    const go=()=>{ const R=render(m); board.show(R.grid,false,R.photo); };
+    if(m.f && m.f.img && !AR[m.f.img]) loadAR(m.f.img, go); else go();
     timer=setTimeout(()=>next(1), Math.max(5,+state.settings?.seconds||15)*1000);
   }
-  // preload product photos so they pop in instantly
   store.listen(s=>{ const first=!state; state=s;
-    (s.messages||[]).forEach(m=>{ if(m.f&&m.f.img){ const i=new Image(); i.src=m.f.img; } });
+    (s.messages||[]).forEach(m=>{ if(m.f&&m.f.img) loadAR(m.f.img); });
     if(first) next(1); });
   document.addEventListener('click',()=>{ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); });
   document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight') next(1); if(e.key==='ArrowLeft') next(-1); });
@@ -428,7 +423,7 @@ function startAdmin(){
             <button data-a="down" class="btn-link" ${i===state.messages.length-1?'disabled':''} title="Move down">▼</button>
           </div>
         </div>`;
-      makeBoard(card.querySelector('.mini')).show(layout(compose(m)).grid,true);
+      const mb=makeBoard(card.querySelector('.mini')), paintMini=()=>{ const R=render(m); mb.show(R.grid,true,R.photo); }; paintMini(); if(m.f&&m.f.img&&!AR[m.f.img]) loadAR(m.f.img,paintMini);
       card.querySelector('.mini').onclick=()=>openSheet(m.id);
       card.querySelector('input').onchange=e=>{ m.on=e.target.checked; renderCards(); save(); };
       card.querySelector('[data-a=edit]').onclick=()=>openSheet(m.id);
@@ -456,8 +451,8 @@ function startAdmin(){
       ${inp('fine','Fine print','e.g. While supplies last','(optional)')}`;
     if(m.kind==='fact') return `
       <label class="field"><span>The fun fact</span><textarea data-k="fact" rows="3" placeholder="Type the fact. It wraps on its own.">${esc(f.fact)}</textarea></label>`;
-    return `<div class="field lines"><span>Your message <em>(one row of the board per box, up to 22 letters each)</em></span>
-      ${[0,1,2,3,4,5].map(i=>`<input type="text" maxlength="22" data-line="${i}" value="${esc((f.lines||[])[i]||'')}" placeholder="Row ${i+1}"><div class="count" data-count="${i}"></div>`).join('')}</div>`;
+    return `<div class="field lines"><span>Your message <em>(one row of the board per box, up to 30 letters each)</em></span>
+      ${[0,1,2,3,4,5].map(i=>`<input type="text" maxlength="30" data-line="${i}" value="${esc((f.lines||[])[i]||'')}" placeholder="Row ${i+1}"><div class="count" data-count="${i}"></div>`).join('')}</div>`;
   }
 
   function openSheet(id){
@@ -479,9 +474,9 @@ function startAdmin(){
     </div></div>`;
     const pv=makeBoard($('pv'));
     const refresh=(instant)=>{
-      const L=layout(compose(m)); pv.show(L.grid,instant);
+      const L=render(m); pv.show(L.grid,instant,L.photo); if(m.f&&m.f.img&&!AR[m.f.img]) loadAR(m.f.img,()=>{ const R=render(m); pv.show(R.grid,true,R.photo); });
       $('warn').textContent=L.overflow?'Too much text to fit. Try shortening it.':'';
-      document.querySelectorAll('[data-count]').forEach(el=>{ const n=((m.f.lines||[])[+el.dataset.count]||'').length; el.textContent=n?n+'/22':''; });
+      document.querySelectorAll('[data-count]').forEach(el=>{ const n=((m.f.lines||[])[+el.dataset.count]||'').length; el.textContent=n?n+'/30':''; });
     };
     refresh(true);
     document.querySelectorAll('.sheet [data-k]').forEach(el=>{ el.addEventListener('input',()=>{ m.f[el.dataset.k]=el.value; refresh(true); save(); }); });
