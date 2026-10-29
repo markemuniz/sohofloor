@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoHo Floor Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#0a0a0b; --frame:#141416; --tile:#1d1d20; --tile-hi:#26262a; --ink:#f3f1ea;
+    --R:#e2412f; --O:#f08a24; --Y:#f5c518; --G:#2fa35b; --B:#2c6fd6; --V:#7d4fd1; --W:#f3f1ea; --K:#0e0e10;
+    --panel:#16161a; --line:#2a2a30; --muted:#9a9aa3; --accent:#f5c518; --danger:#e2412f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+  body.tv{overflow:hidden;cursor:none}
+
+  /* ---------- Board ---------- */
+  .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  .frame{background:var(--frame);border-radius:calc(var(--cw)*.35);padding:calc(var(--cw)*.55);
+    box-shadow:0 0 0 1px #000, 0 30px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.04)}
+  .grid{display:grid;grid-template-columns:repeat(22,var(--cw));grid-auto-rows:calc(var(--cw)*1.32);gap:calc(var(--cw)*.12)}
+  .cell{position:relative;background:var(--tile);border-radius:calc(var(--cw)*.08);overflow:hidden;perspective:400px;
+    box-shadow:inset 0 -1px 0 rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.03)}
+  .cell::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(1px,calc(var(--cw)*.03));background:rgba(0,0,0,.55);z-index:2}
+  .flap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:"Barlow Condensed",Helvetica,Arial,sans-serif;font-weight:700;font-size:calc(var(--cw)*1.02);line-height:1;color:var(--ink);
+    transform-origin:50% 50%;backface-visibility:hidden}
+  .flap.go{animation:flip 90ms ease-in-out}
+  @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(80deg);filter:brightness(.6)}100%{transform:rotateX(0)}}
+  .flap.c-R{background:var(--R)} .flap.c-O{background:var(--O)} .flap.c-Y{background:var(--Y)} .flap.c-G{background:var(--G)}
+  .flap.c-B{background:var(--B)} .flap.c-V{background:var(--V)} .flap.c-W{background:var(--W)} .flap.c-K{background:var(--K)}
+  .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
+  body.tv:hover .hint{opacity:1}
+
+  /* ---------- Admin ---------- */
+  body.admin{cursor:auto}
+  .adm{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
+  .adm header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .adm h1{font-family:"Barlow Condensed",sans-serif;font-size:30px;letter-spacing:.04em;margin:0}
+  .adm h1 span{color:var(--accent)}
+  .status{font-size:13px;color:var(--muted)}
+  .status.ok{color:#5fd38a} .status.warn{color:var(--O)}
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  input,select,textarea,button{font:inherit;color:var(--ink)}
+  input[type=number],input[type=date],select,textarea{background:#0f0f12;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  textarea{width:100%;min-height:150px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;line-height:1.45;text-transform:uppercase}
+  button{background:#22222a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+  button:hover{background:#2b2b34}
+  button.pri{background:var(--accent);color:#111;border-color:var(--accent);font-weight:600}
+  button.del{color:var(--danger)}
+  button.sm{padding:4px 8px;font-size:12px}
+  .list{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+  .item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:#111114}
+  .item.sel{border-color:var(--accent);background:#1a1a12}
+  .item.off{opacity:.45}
+  .item .txt{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+  .badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .t-spotlight{background:#2c6fd633;color:#8fb6ff} .t-deal{background:#e2412f33;color:#ff9a8d}
+  .t-fact{background:#7d4fd133;color:#c4a7ff} .t-welcome{background:#2fa35b33;color:#86e0a8} .t-custom{background:#ffffff1a;color:#ddd}
+  .expired{font-size:11px;color:var(--O)}
+  .preview{--cw:clamp(10px,2.1vw,24px)}
+  .preview .frame{display:inline-block}
+  .swatches{display:flex;gap:6px;flex-wrap:wrap}
+  .sw{width:26px;height:26px;border-radius:6px;border:1px solid #0006;padding:0}
+  .meta{font-size:12px;color:var(--muted);margin-top:6px}
+  .meta.bad{color:var(--O)}
+  .toggle{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--ink)}
+  .empty{color:var(--muted);font-size:14px;padding:20px 0}
+  .tips{font-size:13px;color:var(--muted);line-height:1.6}
+  .tips code{background:#0f0f12;padding:1px 5px;border-radius:4px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =====================================================================
+   SoHo Floor Board  ·  The Travel Agency SoHo
+   TV view:     index.html
+   Editor view: index.html?admin
+   ---------------------------------------------------------------------
+   1. Paste your Firebase web config below (any project works; data is
+      stored in Firestore at floorboard/main so it won't touch SoHo Board).
+   2. Until a config is pasted, the board runs in LOCAL mode (this browser
+      only), so you can try it out right away.
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+
+const COLS = 22, ROWS = 6;
+const COLORS = ['R','O','Y','G','B','V','W','K'];
+const COLOR_NAMES = {R:'Red',O:'Orange',Y:'Yellow',G:'Green',B:'Blue',V:'Violet',W:'White',K:'Black'};
+const CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$()-+&=;:'\"%,./?°".split('');
+const FLAPS = CHARS.concat(COLORS.map(c => '{'+c+'}'));
+const TYPES = {welcome:'Welcome', spotlight:'Spotlight', deal:'Deal', fact:'Fun Fact', custom:'Custom'};
+
+const DEFAULT_STATE = {
+  settings: { seconds: 14, clock: true },
+  messages: [
+    { id: uid(), type:'welcome', enabled:true, until:'', align:'center',
+      text:"{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}\nWELCOME TO\nTHE TRAVEL AGENCY\nSOHO\n{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}{G}" },
+    { id: uid(), type:'spotlight', enabled:true, until:'', align:'center',
+      text:"{B} STAFF PICK {B}\nPRODUCT NAME HERE\nBRAND - STRAIN TYPE\nASK YOUR BUDTENDER" },
+    { id: uid(), type:'deal', enabled:true, until:'', align:'center',
+      text:"{R}{R} TODAY ONLY {R}{R}\n\nDEAL DETAILS HERE\n\nSEE BUDTENDER FOR INFO" },
+    { id: uid(), type:'fact', enabled:true, until:'', align:'center',
+      text:"{V} TTA FUN FACT {V}\nADD A FUN FACT ABOUT\nTHE TRAVEL AGENCY\nIN THE EDITOR" },
+    { id: uid(), type:'custom', enabled:true, until:'', align:'center',
+      text:"FIRST TIME HERE?\nASK US ANYTHING.\nWE'RE HERE TO HELP\nYOU FIND YOUR TRIP." },
+    { id: uid(), type:'custom', enabled:true, until:'', align:'center',
+      text:"{Y} REMINDER {Y}\nMUST BE 21+ WITH\nVALID ID TO PURCHASE" }
+  ]
+};
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isLive(m){ return m.enabled && (!m.until || todayStr() <= m.until); }
+
+/* ---------------- Text -> 6x22 layout ---------------- */
+function normalize(s){
+  return String(s||'').toUpperCase()
+    .replace(/[‘’]/g,"'").replace(/[“”]/g,'"')
+    .replace(/[–—]/g,'-').replace(/…/g,'...').replace(/·/g,'-');
+}
+function tokenize(line){
+  const out=[]; const re=/\{([ROYGBVWK])\}|./g; let m;
+  while((m=re.exec(line))){ if(m[1]) out.push('{'+m[1]+'}'); else out.push(CHARS.includes(m[0]) ? m[0] : ' '); }
+  return out;
+}
+function wrap(tokens){
+  if(tokens.length<=COLS) return [tokens];
+  const lines=[]; let cur=[]; let word=[];
+  const flush=()=>{ // place word
+    if(!word.length) return;
+    if(cur.length && cur.length+1+word.length>COLS){ lines.push(cur); cur=[]; }
+    if(cur.length) cur.push(' ');
+    while(word.length>COLS){ lines.push(word.slice(0,COLS)); word=word.slice(COLS); }
+    cur=cur.concat(word); word=[];
+  };
+  tokens.forEach(t=>{ if(t===' ') flush(); else word.push(t); });
+  flush(); if(cur.length) lines.push(cur);
+  return lines;
+}
+function layout(text, align){
+  const paras = normalize(text).split('\n');
+  let lines=[]; paras.forEach(p=>{ lines = lines.concat(wrap(tokenize(p))); });
+  // trim blank lines at ends
+  while(lines.length && !lines[0].length) lines.shift();
+  while(lines.length && !lines[lines.length-1].length) lines.pop();
+  const overflow = lines.length>ROWS;
+  lines = lines.slice(0,ROWS).map(l=>{ while(l.length && l[l.length-1]===' ') l=l.slice(0,-1); return l; });
+  const top = Math.floor((ROWS-lines.length)/2);
+  const grid = Array.from({length:ROWS},()=>Array(COLS).fill(' '));
+  lines.forEach((l,i)=>{
+    const left = align==='left' ? 0 : Math.floor((COLS-l.length)/2);
+    l.forEach((t,j)=>{ grid[top+i][left+j]=t; });
+  });
+  return {grid, overflow, lineCount: lines.length};
+}
+
+/* ---------------- Board renderer ---------------- */
+function makeBoard(container){
+  const frame=document.createElement('div'); frame.className='frame';
+  const g=document.createElement('div'); g.className='grid'; frame.appendChild(g);
+  container.appendChild(frame);
+  const cells=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const cell=document.createElement('div'); cell.className='cell';
+    const f=document.createElement('div'); f.className='flap'; cell.appendChild(f); g.appendChild(cell);
+    cells.push({el:f, cur:' ', queue:[], delay:0});
+  }
+  function paint(cell,tok){
+    const el=cell.el; cell.cur=tok;
+    if(tok.length>1){ el.className='flap c-'+tok[1]; el.textContent=''; }
+    else { el.className='flap'; el.textContent=tok===' '?'':tok; }
+  }
+  let timer=null;
+  function tick(){
+    let busy=false;
+    cells.forEach(cell=>{
+      if(!cell.queue.length) return; busy=true;
+      if(cell.delay>0){ cell.delay--; return; }
+      paint(cell, cell.queue.shift());
+      cell.el.classList.remove('go'); void cell.el.offsetWidth; cell.el.classList.add('go');
+    });
+    if(!busy){ clearInterval(timer); timer=null; }
+  }
+  return {
+    show(grid, instant){
+      cells.forEach((cell,i)=>{
+        const target=grid[Math.floor(i/COLS)][i%COLS];
+        cell.queue=[];
+        if(instant){ paint(cell,target); return; }
+        if(target===cell.cur) return;
+        const from=FLAPS.indexOf(cell.cur), to=FLAPS.indexOf(target);
+        let dist=(to-from+FLAPS.length)%FLAPS.length;
+        const steps=Math.min(dist, 10+Math.floor(Math.random()*8));
+        for(let s=steps-1;s>=0;s--) cell.queue.push(FLAPS[(to-s+FLAPS.length)%FLAPS.length]);
+        cell.delay=(i%COLS)+Math.floor(Math.random()*4);
+      });
+      if(!instant && !timer) timer=setInterval(tick,55);
+    }
+  };
+}
+
+/* ---------------- Storage (Firebase or local) ---------------- */
+const USE_FB = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('PASTE') && window.firebase;
+let docRef=null;
+const store = {
+  listen(cb){
+    if(USE_FB){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      docRef = firebase.firestore().collection('floorboard').doc('main');
+      docRef.onSnapshot(s=>{
+        if(!s.exists){ docRef.set(DEFAULT_STATE); cb(structuredClone(DEFAULT_STATE)); }
+        else cb(s.data());
+      }, err=>{ console.error(err); setStatus('Firebase error: '+err.message,'warn'); });
+    } else {
+      const read=()=>{ try{ return JSON.parse(localStorage.getItem('sohofloor')) || structuredClone(DEFAULT_STATE); }catch(e){ return structuredClone(DEFAULT_STATE); } };
+      cb(read());
+      window.addEventListener('storage',e=>{ if(e.key==='sohofloor') cb(read()); });
+    }
+  },
+  save(state){
+    if(USE_FB) return docRef.set(state);
+    try{ localStorage.setItem('sohofloor', JSON.stringify(state)); }catch(e){}
+    return Promise.resolve();
+  }
+};
+
+/* ---------------- TV mode ---------------- */
+function clockText(){
+  const d=new Date();
+  const day=d.toLocaleDateString('en-US',{weekday:'long'}).toUpperCase();
+  const date=d.toLocaleDateString('en-US',{month:'long',day:'numeric'}).toUpperCase();
+  const time=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  return "{Y}{O}{R}{V}{B}{G}\n"+day+"\n"+date+"\n"+time+"\n{G}{B}{V}{R}{O}{Y}";
+}
+function startTV(){
+  document.body.className='tv';
+  const app=document.getElementById('app');
+  app.innerHTML='<div class="stage" id="stage"></div><div class="hint">Click for fullscreen · ← → to skip</div>';
+  const stage=document.getElementById('stage');
+  const fit=()=>{
+    const w=innerWidth*.94, h=innerHeight*.9;
+    const byW=w/(COLS*1.12+1.1), byH=h/(ROWS*1.32+(ROWS-1)*.12+1.1);
+    document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px');
+  };
+  fit(); addEventListener('resize',fit);
+  const board=makeBoard(stage);
+  let state=null, idx=-1, timer=null, cycle=0;
+  function playlist(){
+    const list=(state.messages||[]).filter(isLive).map(m=>({text:m.text,align:m.align}));
+    if(state.settings && state.settings.clock && list.length) list.push({clock:true});
+    return list;
+  }
+  function next(step=1){
+    clearTimeout(timer);
+    const list=playlist();
+    if(!list.length){ board.show(layout("THE TRAVEL AGENCY\nSOHO",'center').grid); return; }
+    idx=(idx+step+list.length)%list.length;
+    const m=list[idx];
+    board.show(layout(m.clock?clockText():m.text, m.align||'center').grid);
+    const secs=Math.max(5, +(state.settings && state.settings.seconds) || 14);
+    timer=setTimeout(()=>next(1), secs*1000);
+  }
+  store.listen(s=>{ const first=!state; state=s; if(first) next(1); });
+  document.addEventListener('click',()=>{ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); });
+  document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight') next(1); if(e.key==='ArrowLeft') next(-1); });
+  // refresh page every 6 hours to pick up code updates and stay healthy on TV browsers
+  setTimeout(()=>location.reload(), 6*60*60*1000);
+}
+
+/* ---------------- Admin mode ---------------- */
+let statusEl=null;
+function setStatus(t,cls){ if(statusEl){ statusEl.textContent=t; statusEl.className='status '+(cls||''); } }
+
+function startAdmin(){
+  document.body.className='admin';
+  const app=document.getElementById('app');
+  app.innerHTML=`
+  <div class="adm">
+    <header>
+      <h1>SOHO FLOOR BOARD <span>· EDITOR</span></h1>
+      <div class="row">
+        <span class="status" id="status"></span>
+        <button onclick="window.open(location.pathname,'_blank')">Open TV view</button>
+      </div>
+    </header>
+    <div class="cols">
+      <div>
+        <div class="card">
+          <h2>Settings</h2>
+          <div class="row">
+            <label class="f">Seconds per message<input type="number" id="secs" min="5" max="120" style="width:110px"></label>
+            <label class="toggle" style="margin-top:16px"><input type="checkbox" id="clock"> Show date &amp; time screen each cycle</label>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2>Messages</h2>
+          <div class="row">
+            <select id="newType">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+            <button class="pri" id="addBtn">+ Add message</button>
+          </div>
+          <div class="list" id="list"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" id="editor"></div>
+        <div class="card" style="margin-top:14px">
+          <h2>Tips</h2>
+          <div class="tips">
+            Each line holds 22 characters and the board has 6 rows. Long lines wrap automatically, and everything is centered unless you pick left align.<br>
+            Color tiles: type <code>{R}</code> <code>{O}</code> <code>{Y}</code> <code>{G}</code> <code>{B}</code> <code>{V}</code> <code>{W}</code> <code>{K}</code> or tap a swatch. Each color counts as one character.<br>
+            Use a "Show until" date for deals so they drop off the board on their own.<br>
+            Mode: <b>${USE_FB?'Firebase (live, shared)':'Local only (paste a Firebase config to go live)'}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  statusEl=document.getElementById('status');
+  setStatus(USE_FB?'Connecting…':'Local mode','warn');
+
+  let state=null, sel=null, saveT=null, lastLocal=0;
+  const $=id=>document.getElementById(id);
+
+  function save(){
+    clearTimeout(saveT); setStatus('Saving…');
+    saveT=setTimeout(()=>{ lastLocal=Date.now(); store.save(state).then(()=>setStatus('Saved ✓','ok')).catch(e=>setStatus('Save failed: '+e.message,'warn')); },500);
+  }
+
+  function renderList(){
+    const list=$('list');
+    if(!state.messages.length){ list.innerHTML='<div class="empty">No messages yet. Add one above.</div>'; return; }
+    list.innerHTML=state.messages.map((m,i)=>{
+      const expired=m.until && todayStr()>m.until;
+      const first=normalize(m.text).split('\n').map(s=>s.replace(/\{[A-Z]\}/g,'').trim()).filter(Boolean).join(' / ');
+      return `<div class="item ${m.id===sel?'sel':''} ${isLive(m)?'':'off'}" data-id="${m.id}">
+        <span class="badge t-${m.type}">${TYPES[m.type]||'Custom'}</span>
+        <span class="txt">${esc(first||'(blank)')}${expired?' <span class="expired">· expired</span>':''}</span>
+        <span class="row" style="gap:4px">
+          <input type="checkbox" title="Show on board" data-act="toggle" ${m.enabled?'checked':''}>
+          <button class="sm" data-act="up" ${i===0?'disabled':''}>↑</button>
+          <button class="sm" data-act="down" ${i===state.messages.length-1?'disabled':''}>↓</button>
+        </span>
+      </div>`;
+    }).join('');
+  }
+
+  let pBoard=null;
+  function renderEditor(){
+    const ed=$('editor'); const m=state.messages.find(x=>x.id===sel);
+    if(!m){ ed.innerHTML='<h2>Editor</h2><div class="empty">Select a message to edit it.</div>'; pBoard=null; return; }
+    ed.innerHTML=`
+      <h2>Edit message</h2>
+      <div class="preview" id="pv"></div>
+      <div class="meta" id="meta"></div>
+      <div class="swatches" style="margin:12px 0 8px">${COLORS.map(c=>`<button class="sw" title="${COLOR_NAMES[c]}" data-c="${c}" style="background:var(--${c})"></button>`).join('')}</div>
+      <textarea id="txt" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:10px">
+        <label class="f">Type<select id="typ">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${m.type===k?'selected':''}>${v}</option>`).join('')}</select></label>
+        <label class="f">Align<select id="aln"><option value="center">Center</option><option value="left" ${m.align==='left'?'selected':''}>Left</option></select></label>
+        <label class="f">Show until (optional)<input type="date" id="until" value="${m.until||''}"></label>
+        <label class="toggle" style="margin-top:16px"><input type="checkbox" id="en" ${m.enabled?'checked':''}> On board</label>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button id="dup">Duplicate</button>
+        <button class="del" id="rm">Delete</button>
+      </div>`;
+    $('txt').value=m.text;
+    pBoard=makeBoard($('pv'));
+    updatePreview(m,true);
+    $('txt').addEventListener('input',e=>{ m.text=e.target.value; updatePreview(m); renderList(); save(); });
+    $('typ').onchange=e=>{ m.type=e.target.value; renderList(); save(); };
+    $('aln').onchange=e=>{ m.align=e.target.value; updatePreview(m); save(); };
+    $('until').onchange=e=>{ m.until=e.target.value; renderList(); save(); };
+    $('en').onchange=e=>{ m.enabled=e.target.checked; renderList(); save(); };
+    ed.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{
+      const ta=$('txt'); const s=ta.selectionStart, e=ta.selectionEnd, ins='{'+b.dataset.c+'}';
+      ta.value=ta.value.slice(0,s)+ins+ta.value.slice(e); ta.focus(); ta.selectionStart=ta.selectionEnd=s+ins.length;
+      ta.dispatchEvent(new Event('input'));
+    });
+    $('dup').onclick=()=>{ const c={...m,id:uid()}; state.messages.splice(state.messages.indexOf(m)+1,0,c); sel=c.id; renderList(); renderEditor(); save(); };
+    $('rm').onclick=()=>{ if(!confirm('Delete this message?')) return; state.messages=state.messages.filter(x=>x!==m); sel=state.messages[0]?.id||null; renderList(); renderEditor(); save(); };
+  }
+  function updatePreview(m,instant){
+    if(!pBoard) return;
+    const L=layout(m.text,m.align);
+    pBoard.show(L.grid, instant);
+    const longest=Math.max(0,...normalize(m.text).split('\n').map(l=>tokenize(l).length));
+    const meta=$('meta');
+    if(L.overflow){ meta.textContent='Too long: only the first 6 rows will show. Shorten the text.'; meta.className='meta bad'; }
+    else { meta.textContent=`${L.lineCount}/6 rows used`+(longest>COLS?' · long lines are wrapping':''); meta.className='meta'; }
+  }
+
+  $('list').addEventListener('click',e=>{
+    const item=e.target.closest('.item'); if(!item) return;
+    const id=item.dataset.id, i=state.messages.findIndex(x=>x.id===id), act=e.target.dataset.act;
+    if(act==='toggle'){ state.messages[i].enabled=e.target.checked; renderList(); if(id===sel){ $('en').checked=e.target.checked; } save(); return; }
+    if(act==='up'||act==='down'){ const j=act==='up'?i-1:i+1; [state.messages[i],state.messages[j]]=[state.messages[j],state.messages[i]]; renderList(); save(); return; }
+    sel=id; renderList(); renderEditor();
+  });
+  $('addBtn').onclick=()=>{
+    const t=$('newType').value;
+    const starters={welcome:"WELCOME TO\nTHE TRAVEL AGENCY\nSOHO",spotlight:"{B} SPOTLIGHT {B}\nPRODUCT NAME\nBRAND",deal:"{R} DEAL {R}\nDETAILS HERE",fact:"{V} TTA FUN FACT {V}\nYOUR FACT HERE",custom:"YOUR MESSAGE HERE"};
+    const m={id:uid(),type:t,enabled:true,until:'',align:'center',text:starters[t]};
+    state.messages.push(m); sel=m.id; renderList(); renderEditor(); save();
+    $('txt').focus();
+  };
+  $('secs').onchange=e=>{ state.settings.seconds=Math.max(5,Math.min(120,+e.target.value||14)); save(); };
+  $('clock').onchange=e=>{ state.settings.clock=e.target.checked; save(); };
+
+  store.listen(s=>{
+    // ignore our own echo while typing
+    if(state && Date.now()-lastLocal<2000) { setStatus('Saved ✓','ok'); return; }
+    state=s; state.settings=state.settings||{seconds:14,clock:true}; state.messages=state.messages||[];
+    if(!sel || !state.messages.find(x=>x.id===sel)) sel=state.messages[0]?.id||null;
+    $('secs').value=state.settings.seconds; $('clock').checked=!!state.settings.clock;
+    renderList(); renderEditor();
+    setStatus(USE_FB?'Live ✓':'Local mode (not shared)', USE_FB?'ok':'warn');
+  });
+}
+
+if(new URLSearchParams(location.search).has('admin')) startAdmin(); else startTV();
+</script>
+</body>
+</html>
