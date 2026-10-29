@@ -3,1296 +3,440 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0c0c0c">
 <title>SoHo Floor Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
-/* Customer-facing split-flap board for the sales floor, plus a PIN-locked editor at #admin.
-   Same look as the SoHo Board: near-black bezel, charcoal flaps, warm white characters, seven color chips. */
-:root{
-  --bg:#0D0E10; --panel:#16181C; --panel2:#1E2126; --line:#2A2E35; --text:#ECEDEF; --muted:#9A9FA8; --dim:#5d626b;
-  --accent:#F6C21C; --on-accent:#141005; --danger:#FF6B5E; --ok:#3CCB6E;
-  --red:#E0362C; --orange:#F47B20; --yellow:#F6C21C; --green:#22A04B; --blue:#2369D6; --violet:#7A3EA1; --white:#F1F0EC;
-  --flap-font:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
-}
-*{box-sizing:border-box}
-[hidden]{display:none !important}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
-body{font-family:Barlow,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
-body.board-mode{overflow:hidden;cursor:none;background:#070707}
-#board{display:block;width:100vw;height:100vh}
-#dot{position:fixed;right:10px;bottom:8px;width:7px;height:7px;border-radius:50%;background:#3A3A3A}
-#photo{position:fixed;left:0;top:0;width:0;height:0;background:#fff;overflow:hidden;opacity:0;transition:opacity .6s ease;display:flex;flex-direction:column;box-shadow:0 8px 34px rgba(0,0,0,.6);pointer-events:none}
-#photo.show{opacity:1}
-#photo img{flex:1 1 auto;min-height:0;width:100%;object-fit:contain;padding:6%;box-sizing:border-box;display:block}
-#photo .cap{flex:none;background:#101010;color:#F1F0EC;font-family:var(--flap-font);font-weight:600;text-transform:uppercase;letter-spacing:.06em;text-align:center;line-height:1.2;padding:.65em .8em}
-#photo .cap:empty{display:none}
-#dot.on{background:#1E6E39}
-.gate{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin-top:8px}
-.gate h2{font-family:var(--flap-font);font-weight:600;font-size:20px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 12px}
-.gate form{display:flex;gap:10px}
-.gate button{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:0 18px;font-weight:700;font-size:15px}
-.gate p{color:var(--danger);font-size:14px;margin:10px 0 0;min-height:18px}
-#keepawake{position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none}
-#nudge{position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;opacity:0}
+  :root{
+    --bg:#0a0a0b; --frame:#141416; --tile:#1d1d20; --ink:#f3f1ea;
+    --R:#e2412f; --O:#f08a24; --Y:#f5c518; --G:#2fa35b; --B:#2c6fd6; --V:#7d4fd1; --W:#f3f1ea; --K:#0e0e10;
+    --panel:#17171b; --line:#2b2b32; --muted:#9a9aa3; --accent:#f5c518; --danger:#ff6b5b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+  body.tv{overflow:hidden;cursor:none;height:100%}
 
-/* ---------- editor ---------- */
-#editor{max-width:720px;margin:0 auto;padding:16px 14px 90px}
-.ed-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 2px 12px}
-.ed-title{font-family:var(--flap-font);font-weight:600;font-size:23px;white-space:nowrap;letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:11px}
-.ed-title .bits{display:inline-grid;grid-template-columns:repeat(3,7px);gap:2px}
-.ed-title .bits i{width:7px;height:12px;border-radius:1.5px;background:var(--c)}
-.pill{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
-.pill.live{color:#86e3a2;border-color:#24593a;background:#10231a}
-.pill.off{color:#f2ab76;border-color:#5a3b20;background:#24170e}
-.now-line{font-size:13px;color:var(--muted);margin:0 2px 12px;min-height:18px}
-.now-line b{color:var(--text);font-weight:600}
-.hold-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#29230f;border:1px solid #5b4b15;color:#f6d77a;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
-.hold-banner button{background:#f6d77a;color:#1b1607;border:0;border-radius:8px;padding:7px 12px;font-weight:700;font-size:13px}
-button{font:inherit;color:inherit;cursor:pointer}
-.add-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
-.add-row button{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 4px 11px;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:7px}
-.add-row button i{width:24px;height:5px;border-radius:2px;background:var(--c)}
-.add-row button:active{background:var(--panel2)}
-.empty{color:var(--muted);text-align:center;padding:30px 10px;border:1px dashed var(--line);border-radius:14px}
+  /* ---------- Board ---------- */
+  .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  .frame{background:var(--frame);border-radius:calc(var(--cw)*.35);padding:calc(var(--cw)*.55);display:inline-block;
+    box-shadow:0 0 0 1px #000, 0 20px 60px rgba(0,0,0,.5)}
+  .grid{display:grid;grid-template-columns:repeat(22,var(--cw));grid-auto-rows:calc(var(--cw)*1.32);gap:calc(var(--cw)*.12)}
+  .cell{position:relative;background:var(--tile);border-radius:calc(var(--cw)*.08);overflow:hidden;perspective:400px}
+  .cell::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(1px,calc(var(--cw)*.03));background:rgba(0,0,0,.55);z-index:2}
+  .flap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:"Barlow Condensed",Helvetica,Arial,sans-serif;font-weight:700;font-size:calc(var(--cw)*1.02);line-height:1;color:var(--ink)}
+  .flap.go{animation:flip 90ms ease-in-out}
+  @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(80deg);filter:brightness(.6)}100%{transform:rotateX(0)}}
+  .flap.c-R{background:var(--R)} .flap.c-O{background:var(--O)} .flap.c-Y{background:var(--Y)} .flap.c-G{background:var(--G)}
+  .flap.c-B{background:var(--B)} .flap.c-V{background:var(--V)} .flap.c-W{background:var(--W)} .flap.c-K{background:var(--K)}
+  .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
+  body.tv:hover .hint{opacity:1}
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
-.card.ontv{border-color:#3b6a49;box-shadow:0 0 0 1px #3b6a49}
-.card-top{padding:10px;cursor:pointer}
-.mg{position:relative;display:grid;grid-template-columns:repeat(22,1fr);grid-template-rows:repeat(6,auto);gap:2px;background:#090909;padding:7px;border-radius:9px;container-type:inline-size}
-.mph{position:absolute;inset:0;background:#fff;border-radius:3px;overflow:hidden}
-.mph img{width:100%;height:100%;object-fit:contain;padding:6%;box-sizing:border-box;display:block}
-.btns{display:flex;gap:8px}
-.fields .filebtn,.btns button{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0;cursor:pointer}
-.mg i{aspect-ratio:4/7;background:#1d1d1d;border-radius:1.5px;display:flex;align-items:center;justify-content:center;font-family:var(--flap-font);font-weight:600;font-size:10px;font-size:3.6cqw;color:#F1F0EC;font-style:normal;line-height:1;overflow:hidden}
-.card.st-off .mg,.card.st-ended .mg,.card.st-empty .mg{opacity:.4}
-.meta{display:flex;align-items:center;gap:7px;margin-top:9px;flex-wrap:wrap}
-.chip{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px 3px 7px;border-radius:6px;background:var(--panel2);border-left:3px solid var(--c,#666)}
-.chip.feat{--c:var(--yellow)}
-.chip.pin{--c:#f6d77a;color:#f6d77a}
-.chip.tv{--c:#4fd27a;color:#86e3a2;display:none}
-.card.ontv .chip.tv{display:inline-block}
-.status{font-size:12.5px;color:var(--muted);margin-left:auto;display:flex;align-items:center;gap:6px}
-.status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--dim)}
-.st-live .status::before{background:#4fd27a}
-.st-sched .status::before{background:var(--blue)}
-.st-ended .status::before,.st-empty .status::before{background:var(--orange)}
+  /* ---------- Editor ---------- */
+  body.admin{cursor:auto}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 80px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .top h1{font-family:"Barlow Condensed",sans-serif;font-size:28px;letter-spacing:.04em;margin:0}
+  .top h1 span{color:var(--accent)}
+  .status{font-size:13px;color:var(--muted)} .status.ok{color:#5fd38a} .status.warn{color:var(--O)}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+  h2{font-size:15px;margin:26px 0 10px;font-weight:700}
+  button,input,select,textarea{font:inherit;color:var(--ink)}
+  button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#222229;padding:10px 14px}
+  button:hover{background:#2b2b34}
+  .btn-pri{background:var(--accent);border-color:var(--accent);color:#111;font-weight:700}
+  .btn-pri:hover{background:#ffd43a}
+  .btn-link{background:none;border:none;color:var(--muted);padding:6px 8px}
+  .btn-del{background:none;border-color:#4a2622;color:var(--danger)}
 
-input.tog{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:999px;background:#3a3a3a;position:relative;flex:none;cursor:pointer;transition:background .15s;margin:0;border:0}
-input.tog::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#cfcbc2;transition:transform .15s}
-input.tog:checked{background:var(--ok)}
-input.tog:checked::after{transform:translateX(18px);background:#fff}
+  .add{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media (max-width:620px){.add{grid-template-columns:repeat(2,1fr)}}
+  .add button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;text-align:left;border-radius:14px;background:var(--panel)}
+  .add b{font-size:15px} .add small{color:var(--muted);font-size:12px;line-height:1.35}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
 
-.fields{padding:12px 12px 14px;border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
-.fields>*{min-width:0}
-.lab{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.fields label,.settings label{display:grid;gap:6px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.fields label.row,.settings label.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.count{font-weight:500;color:var(--dim);letter-spacing:0}
-input[type=text],input[type=number],input[type=date],select,textarea{min-width:0;max-width:100%;font:inherit;font-size:16px;color:var(--text);background:#0f0f0f;border:1px solid var(--line);border-radius:10px;padding:10px 11px;width:100%;letter-spacing:0;text-transform:none;font-weight:500}
-input:focus,select:focus,textarea:focus{outline:none;border-color:#6b675f}
-textarea{resize:vertical;min-height:118px;font-family:var(--flap-font);font-weight:600;text-transform:uppercase;letter-spacing:.05em;line-height:1.35}
-input[data-f=header]{font-family:var(--flap-font);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-input[type=date]{min-height:44px}
-.f2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-.f2>label{min-width:0}
-.line{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.seg{display:inline-flex;background:#0f0f0f;border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
-.seg button{background:none;border:0;border-radius:7px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted)}
-.seg button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
-.swatches{display:flex;gap:7px;flex-wrap:wrap}
-.swatches button{width:28px;height:38px;border-radius:5px;border:2px solid transparent;background:var(--c);padding:0;box-shadow:inset 0 -12px 0 rgba(0,0,0,.12)}
-.swatches button.on{border-color:#fff}
-.warn{font-size:13px;color:#f2ab76;display:none;line-height:1.4}
-.warn.show{display:block}
-.actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:2px}
-.actions button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600}
-.actions .primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.actions .danger{color:var(--danger);margin-left:auto}
+  .cards{display:flex;flex-direction:column;gap:10px}
+  .card{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .card.off{opacity:.45}
+  .card .mini{--cw:8px;flex:none;cursor:pointer}
+  @media (max-width:520px){.card{flex-direction:column;align-items:stretch}.card .mini{--cw:calc((100vw - 90px)/24.6)}}
+  .card .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+  .card .kind{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .card .when{font-size:12px;color:var(--muted)}
+  .card .when.exp{color:var(--O)}
+  .card .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .card .acts button{padding:7px 12px;font-size:13px}
 
-.settings{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 6px;margin-top:22px}
-.settings h2{font-family:var(--flap-font);font-size:15px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px}
-.settings label.row{padding:10px 0;border-top:1px solid var(--line);text-transform:none;letter-spacing:0;font-size:14px;color:var(--text);font-weight:500}
-.settings label.row:first-of-type{border-top:0}
-.settings input[type=number]{width:90px;text-align:center}
-.settings select{width:auto;min-width:130px}
-.ed-foot{text-align:center;margin-top:22px}
-.ed-foot a{color:var(--muted);font-size:14px}
-.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);background:var(--text);color:#111;font-weight:600;font-size:14px;padding:10px 16px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:10}
-.toast.show{opacity:1;transform:translate(-50%,0)}
-@media (max-width:420px){ .add-row button{font-size:12px} .actions button{padding:9px 10px} }
+  .switch{position:relative;display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+  .switch input{display:none}
+  .switch i{width:38px;height:22px;border-radius:99px;background:#3a3a44;position:relative;transition:.2s}
+  .switch i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+  .switch input:checked + i{background:#2fa35b}
+  .switch input:checked + i::after{left:19px}
+
+  .settings{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+  .settings label{display:flex;align-items:center;gap:8px;font-size:14px}
+  select,input[type=text],input[type=date],textarea{background:#0f0f12;border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+  .settings select{width:auto}
+  .empty{color:var(--muted);padding:18px;border:1px dashed var(--line);border-radius:14px;text-align:center}
+  .local{margin-top:28px;font-size:13px;color:var(--O);background:#2a1d0f;border:1px solid #4a3418;border-radius:10px;padding:10px 12px}
+
+  /* sheet */
+  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;z-index:10}
+  .sheet{background:#121216;border:1px solid var(--line);border-radius:18px;width:100%;max-width:640px;padding:18px}
+  .sheet h3{margin:0 0 12px;font-size:18px;display:flex;align-items:center;gap:8px}
+  .sheet .pv{--cw:clamp(9px,calc((100vw - 90px)/24.6),24px);display:flex;justify-content:center;margin-bottom:6px}
+  .warn{font-size:13px;color:var(--O);min-height:18px;text-align:center;margin-bottom:6px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+  .field > span{font-size:13px;font-weight:600}
+  .field em{font-style:normal;color:var(--muted);font-weight:400}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:520px){.two{grid-template-columns:1fr}}
+  .colors{display:flex;gap:8px;flex-wrap:wrap}
+  .colors button{width:34px;height:34px;border-radius:50%;padding:0;border:2px solid transparent}
+  .colors button.sel{border-color:#fff;box-shadow:0 0 0 2px #000 inset}
+  .colors .none{background:#222;color:var(--muted);font-size:11px}
+  .lines input{text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em}
+  .count{font-size:11px;color:var(--muted);text-align:right;margin-top:-2px}
+  .sheet-acts{display:flex;justify-content:space-between;gap:10px;margin-top:20px}
 </style>
 </head>
 <body>
-
-<div id="board-view">
-  <canvas id="board"></canvas>
-  <video id="keepawake" muted loop playsinline autoplay preload="auto">
-    <source src="data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAH7EU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggHl7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECfQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYhpJnRLoXbTepyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhDuaygDgibCBArqBApqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYhpJnRLoXbTemfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDIuMDAwMDAwMDAwAB9DtnXB54EAo6KBAACAEAIAnQEqAgACAAvHCIWFiJmEiD+CAAwNYAD+5rUAo5iBA+gAsQEALxH8ABgAMD/0DAAAAP7mtQAcU7trkbuPs4EAt4r3gQHxggGf8IED" type="video/webm">
-    <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMpbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlN0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHLbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABdm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATZzdGJsAAAAtnN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALGF2Y0MBQsAK/+EAFWdCwAraewEQAAADABAAAAMAIPEiagEABGjOD8gAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAKOAAACjgAAAAYc3R0cwAAAAAAAAABAAAAAgAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAgAAAAEAAAAcc3RzegAAAAAAAAAAAAAAAgAAAoUAAAAJAAAAFHN0Y28AAAAAAAAAAQAAA1kAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAClm1kYXQAAAJvBgX//2vcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MSBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT0yIHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTAgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0wIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PTAgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MCB3ZWlnaHRwPTAga2V5aW50PTI1MCBrZXlpbnRfbWluPTEgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD0xMCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAAOZYiEBb///w9FAAFPf4AAAAAFQZogFfU=" type="video/mp4">
-  </video>
-  <div id="nudge"></div>
-  <div id="dot"></div>
-  <div id="photo"><img alt=""><div class="cap"></div></div>
-</div>
-
-<div id="editor" hidden>
-  <header class="ed-head">
-    <div class="ed-title"><span class="bits"><i style="--c:var(--green)"></i><i style="--c:var(--orange)"></i><i style="--c:var(--blue)"></i></span>Floor Board</div>
-    <span id="ed-status" class="pill">Connecting</span>
-  </header>
-  <section id="gate" class="gate">
-    <h2>Enter PIN</h2>
-    <form id="gateForm"><input id="pinInput" type="password" autocomplete="off" placeholder="Manager PIN"><button type="submit">Unlock</button></form>
-    <p id="gateMsg"></p>
-  </section>
-  <div id="ed-main" hidden>
-  <div id="ed-now" class="now-line"></div>
-  <div id="ed-hold" class="hold-banner" hidden></div>
-  <div class="add-row">
-    <button data-add="spotlight"><i style="--c:var(--green)"></i>Spotlight</button>
-    <button data-add="deal"><i style="--c:var(--orange)"></i>Deal</button>
-    <button data-add="fact"><i style="--c:var(--blue)"></i>Fun fact</button>
-    <button data-add="custom"><i style="--c:var(--violet)"></i>Custom</button>
-  </div>
-  <div id="ed-list"></div>
-  <section class="settings">
-    <h2>Settings</h2>
-    <label class="row"><span>Seconds per screen</span><input type="number" id="set-seconds" min="4" max="300" inputmode="numeric"></label>
-    <label class="row"><span>Shuffle order</span><input type="checkbox" class="tog" id="set-shuffle"></label>
-    <label class="row"><span>Featured screens come up every</span>
-      <select id="set-every"><option value="2">2 screens</option><option value="3">3 screens</option><option value="4">4 screens</option><option value="5">5 screens</option><option value="6">6 screens</option></select></label>
-    <label class="row"><span>Flip style</span>
-      <select id="set-flip"><option value="full">Full flip</option><option value="quick">Quick flip</option></select></label>
-  </section>
-  <footer class="ed-foot"><a id="open-board" href="./" target="_blank" rel="noopener">Open the board</a></footer>
-  </div>
-</div>
-<div id="toast" class="toast"></div>
+<div id="app"></div>
 
 <script>
-(function(){
-'use strict';
-
 /* =====================================================================
-   SETUP: paste your Firebase web config here so the editor (phone) and
-   the TV stay in sync. Leave apiKey blank to run on this device only.
+   SoHo Floor Board · The Travel Agency SoHo
+   TV view:     markemuniz.github.io/sohofloor
+   Editor:      markemuniz.github.io/sohofloor/?admin
+   Paste a Firebase web config below to sync the editor and the TV.
+   Until then it runs in LOCAL mode (saves only in that browser).
    ===================================================================== */
-var FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAagyUGnM-kqbiLy5rHjALPp2LtbM8KVmQ",
-  authDomain: "soho-board.firebaseapp.com",
-  databaseURL: "https://soho-board-default-rtdb.firebaseio.com",
-  projectId: "soho-board",
-  storageBucket: "soho-board.firebasestorage.app",
-  messagingSenderId: "275130060759",
-  appId: "1:275130060759:web:121dd51aa3ca891788c592"
+const FIREBASE_CONFIG = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
 };
-var DB_PATH = "sohoFloor";      // its own node, separate from the SoHo Board (sohoBoard)
-var PIN = "SOHO2026";           // same manager PIN as the SoHo Board admin
-var STORE_NAME = "SOHO";
-/* ===================================================================== */
 
-const ROWS = 6, COLS = 22;
-const COLORS = {R:'#E0362C',O:'#F47B20',Y:'#F6C21C',G:'#22A04B',B:'#2369D6',V:'#7A3EA1',W:'#F1F0EC'};
-const COLOR_KEYS = ['R','O','Y','G','B','V','W'];
-const COLOR_NAMES = {R:'Red',O:'Orange',Y:'Yellow',G:'Green',B:'Blue',V:'Violet',W:'White'};
-const RAINBOW = ['R','O','Y','G','B','V'];
-const FLAP = [' '].concat(
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
-  '1234567890'.split(''),
-  "!@#$()-+&=;:'\"%,./?°".split(''),
-  COLOR_KEYS.map(function(k){ return '{' + k + '}'; })
-);
-const N = FLAP.length;
-const IDX = {}; FLAP.forEach(function(v, i){ IDX[v] = i; });
-const isColor = function(v){ return v.length === 3; };
+const COLS = 22, ROWS = 6;
+const COLORS = ['R','O','Y','G','B','V','W'];
+const CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$()-+&=;:'\"%,./?°".split('');
+const FLAPS = CHARS.concat(['R','O','Y','G','B','V','W','K'].map(c => '{'+c+'}'));
 
-const TYPES = {
-  spotlight: {label:'Spotlight', header:'PRODUCT SPOTLIGHT', accent:'G', style:'banner'},
-  deal:      {label:'Deal',      header:"TODAY'S DEAL",      accent:'O', style:'banner'},
-  fact:      {label:'Fun fact',  header:'DID YOU KNOW?',     accent:'B', style:'banner'},
-  custom:    {label:'Custom',    header:'',                  accent:'V', style:'plain'}
+const KINDS = {
+  spotlight:{label:'Product Spotlight', help:'Feature a product', color:'B'},
+  deal:     {label:'Deal', help:'A sale or promo', color:'R'},
+  fact:     {label:'Fun Fact', help:'Something about TTA', color:'V'},
+  note:     {label:'Message', help:'Anything else, line by line', color:'G'}
 };
-const TYPE_ORDER = ['spotlight','deal','fact','custom'];
-const TYPE_COLOR = {spotlight:'G', deal:'O', fact:'B', custom:'V'};
-const DEFAULT_SETTINGS = {seconds:15, shuffle:false, featureEvery:3, flip:'full', holdId:''};
-const IS_EDITOR = location.hash.replace('#', '').toLowerCase() === 'admin';
-window.addEventListener('hashchange', function(){ location.reload(); });
+const CATS = ['Flower','Pre-Roll','Vape','Edible','Concentrate','Beverage','Tincture','Topical','Accessory',''];
 
-/* ---------- small helpers ---------- */
-const $ = function(s, el){ return (el || document).querySelector(s); };
-const pad = function(n){ return (n < 10 ? '0' : '') + n; };
-function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-function fmtDate(s){ if (!s) return ''; const p = s.split('-'); const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(p[1]) - 1]; return m + ' ' + Number(p[2]); }
-function newId(){ return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-function lsGet(k){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
-function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-function blankGrid(){ const g = []; for (let r = 0; r < ROWS; r++){ const row = []; for (let c = 0; c < COLS; c++) row.push(' '); g.push(row); } return g; }
-function gridKey(g){ return g.map(function(r){ return r.join('|'); }).join('/'); }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function esc(s){ return String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isLive(m){ return m.on && (!m.until || todayStr() <= m.until); }
+function niceDate(s){ if(!s) return ''; const [y,mo,d]=s.split('-'); return (+mo)+'/'+(+d); }
 
-/* ---------- text to board tiles ---------- */
-function normalizeText(s){
-  s = String(s || '')
-    .replace(/[‘’‚‛′`]/g, "'")
-    .replace(/[“”„″]/g, '"')
-    .replace(/[‐-―−]/g, '-')
-    .replace(/…/g, '...')
-    .replace(/[º˚]/g, '°')
-    .replace(/\r/g, '').replace(/\t/g, ' ');
-  if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return s.toUpperCase();
-}
-function tokenize(s){
-  const chars = Array.from(normalizeText(s));
-  const out = [], bad = [];
-  for (let i = 0; i < chars.length; i++){
-    const ch = chars[i];
-    if (ch === '{' && chars[i + 2] === '}' && COLORS[chars[i + 1]]){ out.push('{' + chars[i + 1] + '}'); i += 2; continue; }
-    if (ch === '\n'){ out.push('\n'); continue; }
-    if (IDX[ch] !== undefined && !isColor(ch)){ out.push(ch); continue; }
-    if (bad.indexOf(ch) === -1 && ch.trim()) bad.push(ch);
+const DEFAULT_STATE = {
+  settings:{ seconds:15, clock:true },
+  messages:[
+    {id:uid(), kind:'note', on:true, until:'', color:'G', f:{lines:['WELCOME TO','THE TRAVEL AGENCY','SOHO','','','']}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{cat:'Flower', name:'Product name', brand:'Brand', price:'', note:'Ask your budtender'}},
+    {id:uid(), kind:'deal', on:true, until:'', color:'R', f:{headline:'20% off', item:"What's on sale", fine:''}},
+    {id:uid(), kind:'fact', on:true, until:'', color:'V', f:{fact:'Add a fun fact about The Travel Agency here'}},
+    {id:uid(), kind:'note', on:true, until:'', color:'Y', f:{lines:['MUST BE 21+ WITH','VALID ID TO PURCHASE','','','','']}}
+  ]
+};
+
+/* ---------------- Turn a message into board text ---------------- */
+function compose(m){
+  const c=m.color||'', f=m.f||{};
+  const head=t=> c ? `{${c}} ${t} {${c}}` : t;
+  let L=[];
+  if(m.kind==='spotlight'){
+    L=[head(((f.cat||'')+' PICK').trim()), f.name, f.brand,
+       [f.price ? '$'+String(f.price).replace(/^\$/,'') : '', ''].join(''), f.note];
+  } else if(m.kind==='deal'){
+    L=[c?`{${c}}{${c}} DEAL {${c}}{${c}}`:'DEAL', f.headline, f.item, f.fine, m.until?'ENDS '+niceDate(m.until):''];
+  } else if(m.kind==='fact'){
+    L=[head('TTA FUN FACT'), f.fact];
+  } else {
+    const lines=(f.lines||[]).map(s=>s||'');
+    while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+    while(lines.length && !lines[0].trim()) lines.shift();
+    if(c && lines.length<=4){ const bar=('{'+c+'}').repeat(COLS); return [bar].concat(lines,[bar]).join('\n'); }
+    return lines.join('\n');
   }
-  return {tokens: out, bad: bad};
-}
-function wrap(tokens, W){
-  const lines = [], paras = [[]];
-  tokens.forEach(function(t){ if (t === '\n') paras.push([]); else paras[paras.length - 1].push(t); });
-  paras.forEach(function(p){
-    const words = []; let w = [];
-    p.forEach(function(t){ if (t === ' '){ if (w.length) words.push(w); w = []; } else w.push(t); });
-    if (w.length) words.push(w);
-    if (!words.length){ lines.push([]); return; }
-    let line = [];
-    words.forEach(function(word){
-      while (word.length > W){
-        if (line.length){ lines.push(line); line = []; }
-        lines.push(word.slice(0, W)); word = word.slice(W);
-      }
-      if (!word.length) return;
-      if (!line.length) line = word.slice();
-      else if (line.length + 1 + word.length <= W) line = line.concat([' '], word);
-      else { lines.push(line); line = word.slice(); }
-    });
-    if (line.length) lines.push(line);
-  });
-  while (lines.length && !lines[0].length) lines.shift();
-  while (lines.length && !lines[lines.length - 1].length) lines.pop();
-  return lines;
-}
-function layout(m){
-  const g = blankGrid(), bad = [];
-  const t = TYPES[m.type] || TYPES.custom;
-  const style = m.style || t.style;
-  const accent = COLORS[m.accent] ? m.accent : t.accent;
-  const hasPhoto = !!String(m.image || '').trim();
-  const PHOTO_C0 = COLS - 8;                       // photo sits in the right 8 columns
-  const textCols = hasPhoto ? PHOTO_C0 - 1 : COLS; // text gets the left 13, one column gap
-  let r0 = 0, r1 = ROWS - 1;
-  if (style === 'banner'){
-    const ht = tokenize((m.header && m.header.trim()) ? m.header : t.header);
-    ht.bad.forEach(function(b){ if (bad.indexOf(b) === -1) bad.push(b); });
-    const h = ht.tokens.filter(function(x){ return x !== '\n'; });
-    while (h.length && h[0] === ' ') h.shift();
-    while (h.length && h[h.length - 1] === ' ') h.pop();
-    if (h.length){
-      const H = h.slice(0, COLS), row = g[0];
-      if (H.length <= COLS - 4){
-        const left = Math.floor((COLS - (H.length + 2)) / 2);
-        for (let c = 0; c < COLS; c++) row[c] = '{' + accent + '}';
-        row[left] = ' ';
-        H.forEach(function(x, i){ row[left + 1 + i] = x; });
-        row[left + 1 + H.length] = ' ';
-      } else {
-        const left2 = Math.floor((COLS - H.length) / 2);
-        H.forEach(function(x, i){ row[left2 + i] = x; });
-      }
-      r0 = 1;
-    }
-  } else if (style === 'rainbow'){
-    for (let c = 0; c < COLS; c++){
-      g[0][c] = '{' + RAINBOW[c % 6] + '}';
-      g[ROWS - 1][c] = '{' + RAINBOW[(COLS - 1 - c) % 6] + '}';
-    }
-    r0 = 1; r1 = ROWS - 2;
-  }
-  const photo = hasPhoto ? {c0: PHOTO_C0, c1: COLS - 1, r0: r0, r1: r1} : null;
-  const bt = tokenize(m.body);
-  bt.bad.forEach(function(b){ if (bad.indexOf(b) === -1) bad.push(b); });
-  let lines = wrap(bt.tokens, textCols);
-  let rows = r1 - r0 + 1;
-  if (style === 'banner' && r0 === 1 && lines.length <= rows - 1){ r0 = 2; rows = r1 - r0 + 1; }
-  const overflow = Math.max(0, lines.length - rows);
-  lines = lines.slice(0, rows);
-  const top = r0 + Math.floor((rows - lines.length) / 2);
-  lines.forEach(function(ln, i){
-    const start = m.align === 'left' ? 0 : Math.floor((textCols - ln.length) / 2);
-    ln.forEach(function(x, j){ g[top + i][start + j] = x; });
-  });
-  return {grid: g, overflow: overflow, bad: bad, photo: photo};
+  return L.filter(x=>x && String(x).trim()).join('\n');
 }
 
-/* ---------- data ---------- */
-function normalizeMsg(m){
-  m = m || {};
-  const type = TYPES[m.type] ? m.type : 'custom';
-  const t = TYPES[type];
-  return {
-    id: String(m.id || newId()), type: type,
-    style: ['banner','rainbow','plain'].indexOf(m.style) > -1 ? m.style : t.style,
-    header: m.header || '', body: m.body || '',
-    accent: COLORS[m.accent] ? m.accent : t.accent,
-    duration: (m.duration === '' || m.duration == null) ? '' : Number(m.duration) || '',
-    active: m.active !== false, featured: !!m.featured,
-    start: m.start || '', end: m.end || '',
-    align: m.align === 'left' ? 'left' : 'center',
-    image: String(m.image || ''), caption: String(m.caption || ''),
-    order: Number(m.order) || 0
-  };
+/* ---------------- Text -> 6x22 grid ---------------- */
+function normalize(s){
+  return String(s||'').toUpperCase().replace(/[‘’]/g,"'").replace(/[“”]/g,'"')
+    .replace(/[–—]/g,'-').replace(/…/g,'...');
 }
-function normMessages(obj){
-  const out = {};
-  Object.keys(obj || {}).forEach(function(k){ const v = obj[k]; if (v && typeof v === 'object'){ v.id = k; out[k] = normalizeMsg(v); } });
+function tokenize(line){
+  const out=[]; const re=/\{([ROYGBVWK])\}|./g; let m;
+  while((m=re.exec(line))){ if(m[1]) out.push('{'+m[1]+'}'); else out.push(CHARS.includes(m[0])?m[0]:' '); }
   return out;
 }
-function normalizeData(d){
-  d = d || {};
-  return {messages: normMessages(d.messages), settings: Object.assign({}, DEFAULT_SETTINGS, d.settings || {}), meta: d.meta || {}};
+function wrap(tokens){
+  if(tokens.length<=COLS) return [tokens];
+  const lines=[]; let cur=[], word=[];
+  const flush=()=>{ if(!word.length) return;
+    if(cur.length && cur.length+1+word.length>COLS){ lines.push(cur); cur=[]; }
+    if(cur.length) cur.push(' ');
+    while(word.length>COLS){ lines.push(word.slice(0,COLS)); word=word.slice(COLS); }
+    cur=cur.concat(word); word=[]; };
+  tokens.forEach(t=>{ if(t===' ') flush(); else word.push(t); });
+  flush(); if(cur.length) lines.push(cur);
+  return lines;
 }
-function cleanMsg(m){ return JSON.parse(JSON.stringify(normalizeMsg(m))); }
-
-/* Product spotlights: top in-stock seller per category at SoHo (Dutchie sales 6/1 to 10/29/2026),
-   photos and descriptions from thetravelagency.co, prices from the SoHo inventory list. */
-const SEED_VERSION = 3;
-const IMG = 'https://leaflogixmedia.blob.core.windows.net/product-image/';
-const OLD_PREROLL_IMG = IMG + '5ec667a4-3c5f-4c6e-b34c-79525abd7a1f.jpg';   // 13,037px original, too big to use
-const SPOTLIGHTS = [
-  {id:'spot-preroll', header:'TOP PRE-ROLL', accent:'O', order:1.5,
-   body:"RUBY FARMS\nDOOBIES\nBLUE DREAM\n2PK $14\n7PK $38", image: IMG + '82c78753-d344-4c38-b238-31d3d8cccb87.jpg',
-   caption:'Sweet berry flavor. Sativa-dominant hybrid.'},
-  {id:'spot-flower', header:'TOP FLOWER', accent:'G', order:4.5,
-   body:"RUBY FARMS\nMAUI WOWIE\nSATIVA 3.5G\n$42", image: IMG + '73f08238-efb6-40bf-8232-3724476476cf.jpg',
-   caption:'Tropical, pineapple-forward sativa.'},
-  {id:'spot-edible', header:'TOP EDIBLE', accent:'V', order:8.5,
-   body:"WYLD\nKIWI GUMMIES\n1:1 THC:THCV\n10 PACK - $28", image: IMG + '05a2e426-3efe-42cb-9e1e-32adfe2ec78e.jpg',
-   caption:'Real fruit gummies. 10mg THC + 10mg THCV each.'},
-  {id:'spot-vape', header:'TOP VAPE', accent:'B', order:12.5,
-   body:"BLOOM\nGUAVA BELTS\n1G ALL-IN-ONE\n$45", image: IMG + 'a5f7ea25-5e35-4dce-ad31-dbde9a198a0b.jpg',
-   caption:'Sweet, juicy guava with tropical berry notes.'},
-  {id:'spot-concentrate', header:'TOP CONCENTRATE', accent:'Y', order:16.5,
-   body:"STONE ROAD\nCHARAS HASH\nSATIVA BLEND\n1G - $36", image: IMG + '015f9587-1c0f-4cdb-aa9f-83cbfbaeb57a.jpg',
-   caption:'Solventless hash. Earthy pine with soft citrus.'}
-].map(function(x){ return cleanMsg(Object.assign({type:'spotlight', style:'banner'}, x)); });
-function addMissingSpotlights(messages){
-  SPOTLIGHTS.forEach(function(x){ if (!messages[x.id]) messages[x.id] = cleanMsg(x); });
-  return messages;
-}
-function fixPreroll(cur){   // swap the oversized photo, only if nobody edited that screen's photo
-  if (!cur || cur.image !== OLD_PREROLL_IMG) return null;
-  const x = SPOTLIGHTS.filter(function(s){ return s.id === 'spot-preroll'; })[0];
-  return Object.assign({}, cur, {image: x.image, body: x.body});
+function layout(text){
+  let lines=[]; normalize(text).split('\n').forEach(p=>{ lines=lines.concat(wrap(tokenize(p))); });
+  while(lines.length && !lines[0].length) lines.shift();
+  while(lines.length && !lines[lines.length-1].length) lines.pop();
+  const overflow=lines.length>ROWS;
+  lines=lines.slice(0,ROWS).map(l=>{ while(l.length && l[l.length-1]===' ') l=l.slice(0,-1); while(l.length && l[0]===' ') l=l.slice(1); return l; });
+  const top=Math.floor((ROWS-lines.length)/2);
+  const grid=Array.from({length:ROWS},()=>Array(COLS).fill(' '));
+  lines.forEach((l,i)=>{ const left=Math.floor((COLS-l.length)/2); l.forEach((t,j)=>{ grid[top+i][left+j]=t; }); });
+  return {grid, overflow};
 }
 
-function seedMessages(){
-  const rows = [
-    ['custom','rainbow','',"WELCOME TO\nTHE TRAVEL AGENCY\n" + STORE_NAME],
-    ['fact','banner','',"OUR FIRST STORE OPENED\nFEB 13, 2023, AS ONE\nOF THE FIRST LEGAL\nDISPENSARIES IN NY"],
-    ['spotlight','banner','',"BRAND NAME\nPRODUCT NAME\nSTRAIN - SIZE\nASK YOUR BUDTENDER", {active:false}],
-    ['fact','banner','',"LIMONENE, A COMMON\nCANNABIS TERPENE, IS\nALSO FOUND IN LEMON\nAND ORANGE PEELS"],
-    ['custom','banner','TRAVEL CLUB',"MEMBERS EARN POINTS\nAND UNLOCK PERKS.\nASK YOUR BUDTENDER\nHOW TO JOIN", {accent:'Y'}],
-    ['fact','banner','',"OUR ARCHED CEILING WAS\nDESIGNED BY\nLEONG LEONG\nARCHITECTURE"],
-    ['deal','banner','',"20% OFF\nALL BRAND NAME VAPES\nTODAY ONLY", {active:false, featured:true}],
-    ['custom','banner','LOVE YOUR TRIP?',"LEAVE US A GOOGLE\nREVIEW AND SHOUT OUT\nYOUR BUDTENDER", {accent:'G'}],
-    ['fact','banner','',"THIS STORE OPENED IN\nMAY 2025 AS THE 4TH\nTRAVEL AGENCY"],
-    ['fact','banner','',"MYRCENE, ANOTHER\nCOMMON TERPENE, IS\nALSO IN MANGOES,\nHOPS AND LEMONGRASS"],
-    ['custom','banner','FIRST TIME?',"START LOW, GO SLOW.\nOUR BUDTENDERS WILL\nHELP YOU FIND YOUR\nPERFECT TRIP", {accent:'V'}],
-    ['fact','banner','',"OUR BONG GALLERY IS\nFUNCTIONAL ART BY\nSERENA CONFALONIERI\n& JUAN MANUEL CARMONA"],
-    ['fact','banner','',"COMEDIAN AMY SEDARIS\nONCE SERVED AS A GUEST\nTRAVEL AGENT AT OUR\nUNION SQUARE FLAGSHIP"],
-    ['fact','banner','',"ALL CANNABIS SOLD HERE\nIS GROWN IN\nNEW YORK STATE"],
-    ['fact','banner','',"PINENE, THE TERPENE\nBEHIND PINE NEEDLES\nAND ROSEMARY, SHOWS UP\nIN CANNABIS TOO"],
-    ['fact','banner','',"OUR KINETIC ART PIECE\nIS BY ANDREW ZOLTY\nOF BREAKFAST STUDIO"],
-    ['custom','banner','OUR OTHER STORES',"UNION SQUARE\nDOWNTOWN BROOKLYN\nFIFTH AVENUE", {accent:'R'}],
-    ['fact','banner','',"IN OUR FIRST YEAR WE\nGENERATED ABOUT $5M IN\nNY TAX REVENUE AND\nCREATED 120 JOBS"],
-    ['fact','banner','',"CARYOPHYLLENE, A\nTERPENE IN BLACK\nPEPPER, IS COMMON IN\nCANNABIS TOO"],
-    ['fact','banner','',"SOHO'S ART LEGACY,\nFROM KEITH HARING TO\nBASQUIAT, INSPIRED\nTHIS STORE'S DESIGN"],
-    ['fact','banner','',"NEW YORK LEGALIZED\nADULT-USE CANNABIS\nON MARCH 31, 2021"],
-    ['fact','banner','',"EVERY CANNABIS PRODUCT\nWE SELL IS LAB TESTED\nAS REQUIRED BY\nNEW YORK STATE"],
-    ['fact','banner','',"LINALOOL GIVES\nLAVENDER ITS SCENT\nAND APPEARS IN SOME\nCANNABIS STRAINS"],
-    ['fact','banner','',"OUR CUSTOMERS SPAN\nFIVE GENERATIONS, FROM\nGEN Z TO THE SILENT\nGENERATION"],
-    ['fact','banner','',"THE TERM 420 TRACES\nBACK TO A GROUP OF\nCALIFORNIA HIGH SCHOOL\nSTUDENTS IN 1971"]
-  ];
-  const out = {};
-  rows.forEach(function(r, i){
-    const id = 'seed' + String(i + 1).padStart(2, '0');
-    out[id] = cleanMsg(Object.assign({id: id, type: r[0], style: r[1], header: r[2], body: r[3], order: i}, r[4] || {}));
-  });
-  return addMissingSpotlights(out);
-}
-
-const LS_DATA = 'sohoFloor:data', LS_FLASH = 'sohoFloor:flash', LS_NOW = 'sohoFloor:now';
-const FB_SRC = ['https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
-                'https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js'];
-function loadScript(src){
-  return new Promise(function(res, rej){
-    const s = document.createElement('script'); s.src = src; s.async = false;
-    s.onload = res; s.onerror = function(){ s.remove(); rej(new Error('Could not load ' + src)); };
-    document.head.appendChild(s);
-  });
-}
-function ensureFirebase(){
-  if (window.firebase && window.firebase.database) return Promise.resolve();
-  const first = window.firebase ? Promise.resolve() : loadScript(FB_SRC[0]);
-  return first.then(function(){ return window.firebase.database ? null : loadScript(FB_SRC[1]); });
-}
-
-const Store = {
-  mode: 'local', status: 'local', data: normalizeData({}), flash: null, now: null, ref: null, wasLive: false,
-  subs: {data: [], flash: [], now: [], status: []},
-  on: function(ev, fn){ this.subs[ev].push(fn); },
-  emit: function(ev, v){ this.subs[ev].forEach(function(fn){ try { fn(v); } catch (e) { console.error(e); } }); },
-  setStatus: function(s){ this.status = s; this.emit('status', s); },
-  configured: function(){ return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL); },
-  cache: function(){ lsSet(LS_DATA, this.data); },
-  init: function(){
-    const self = this;
-    const cached = lsGet(LS_DATA);
-    if (!this.configured()){
-      this.mode = 'local';
-      this.data = normalizeData(cached && cached.messages ? cached : {messages: seedMessages(), settings: DEFAULT_SETTINGS, meta: {seeded: true, seedVersion: SEED_VERSION}});
-      if ((Number(this.data.meta.seedVersion) || 1) < SEED_VERSION){
-        addMissingSpotlights(this.data.messages);
-        const fp = fixPreroll(this.data.messages['spot-preroll']); if (fp) this.data.messages['spot-preroll'] = normalizeMsg(fp);
-        this.data.meta.seedVersion = SEED_VERSION;
-      }
-      this.cache();
-      this.setStatus('local');
-      this.flash = lsGet(LS_FLASH); this.now = lsGet(LS_NOW);
-      window.addEventListener('storage', function(e){
-        try {
-          if (e.key === LS_DATA && e.newValue){ self.data = normalizeData(JSON.parse(e.newValue)); self.emit('data', self.data); }
-          else if (e.key === LS_FLASH && e.newValue){ self.flash = JSON.parse(e.newValue); self.emit('flash', self.flash); }
-          else if (e.key === LS_NOW && e.newValue){ self.now = JSON.parse(e.newValue); self.emit('now', self.now); }
-        } catch (err) {}
-      });
-      this.emit('data', this.data); this.emit('flash', this.flash); this.emit('now', this.now);
-      return;
-    }
-    this.mode = 'firebase';
-    // Play the last screens we saw (or the starter screens) right away, so the board
-    // never sits on one screen while Firebase is loading, offline or blocked.
-    if (cached && cached.messages && Object.keys(cached.messages).length) this.data = normalizeData(cached);
-    else this.data = normalizeData({messages: seedMessages(), settings: DEFAULT_SETTINGS});
-    this.emit('data', this.data);
-    this.connect();
-  },
-  connect: function(){
-    const self = this;
-    this.setStatus('connecting');
-    ensureFirebase().then(function(){
-      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-      const db = firebase.database();
-      self.ref = db.ref(DB_PATH);
-      const denied = function(err){ self.onDenied(err); };
-      db.ref('.info/connected').on('value', function(s){
-        if (self.denied) return;
-        if (s.val()){ self.wasLive = true; self.setStatus('live'); }
-        else self.setStatus(self.wasLive ? 'offline' : 'connecting');
-      });
-      const applyMessages = function(v){
-        if (!v && !self.seeded) return;   // nothing saved yet: keep playing the starter screens
-        self.data.messages = normMessages(v); self.cache(); self.emit('data', self.data);
-      };
-      self.ref.child('meta/seeded').transaction(function(cur){ return cur ? undefined : true; }, function(err, committed){
-        if (err){ denied(err); return; }
-        self.seeded = true;
-        if (committed){
-          self.ref.child('messages').set(seedMessages()).catch(denied);
-          self.ref.child('settings').set(DEFAULT_SETTINGS).catch(denied);
-          self.ref.child('meta/seedVersion').set(SEED_VERSION).catch(denied);
-        } else {
-          self.ref.child('messages').once('value', function(snap){ applyMessages(snap.val()); }, denied);
-          // boards seeded before the product spotlights existed get them added once
-          self.ref.child('meta/seedVersion').transaction(function(cur){ return (Number(cur) || 1) >= SEED_VERSION ? undefined : SEED_VERSION; }, function(err2, committed2){
-            if (err2 || !committed2) return;
-            SPOTLIGHTS.forEach(function(x){
-              self.ref.child('messages/' + x.id).transaction(function(cur){
-                if (!cur) return cleanMsg(x);
-                if (x.id === 'spot-preroll'){ const fp = fixPreroll(cur); if (fp) return fp; }
-                return undefined;
-              }, function(){}, false);
-            });
-          }, false);
-        }
-      }, false);
-      self.ref.child('messages').on('value', function(snap){ applyMessages(snap.val()); }, denied);
-      self.ref.child('settings').on('value', function(snap){
-        if (!snap.val() && !self.seeded) return;
-        self.data.settings = Object.assign({}, DEFAULT_SETTINGS, snap.val() || {}); self.cache(); self.emit('data', self.data);
-      }, denied);
-      self.ref.child('flash').on('value', function(snap){ self.flash = snap.val(); self.emit('flash', self.flash); }, denied);
-      if (IS_EDITOR) self.ref.child('now').on('value', function(snap){ self.now = snap.val(); self.emit('now', self.now); }, denied);
-    }).catch(function(err){
-      console.warn('Firebase not reachable, retrying in 30s.', err);
-      self.ref = null;
-      self.setStatus('offline');
-      setTimeout(function(){ self.connect(); }, 30000);
+/* ---------------- Board renderer ---------------- */
+function makeBoard(container){
+  const frame=document.createElement('div'); frame.className='frame';
+  const g=document.createElement('div'); g.className='grid'; frame.appendChild(g); container.appendChild(frame);
+  const cells=[];
+  for(let i=0;i<ROWS*COLS;i++){
+    const cell=document.createElement('div'); cell.className='cell';
+    const f=document.createElement('div'); f.className='flap'; cell.appendChild(f); g.appendChild(cell);
+    cells.push({el:f, cur:' ', queue:[], delay:0});
+  }
+  const paint=(cell,tok)=>{ cell.cur=tok;
+    if(tok.length>1){ cell.el.className='flap c-'+tok[1]; cell.el.textContent=''; }
+    else { cell.el.className='flap'; cell.el.textContent=tok===' '?'':tok; } };
+  let timer=null;
+  function tick(){
+    let busy=false;
+    cells.forEach(cell=>{ if(!cell.queue.length) return; busy=true;
+      if(cell.delay>0){ cell.delay--; return; }
+      paint(cell, cell.queue.shift()); cell.el.classList.remove('go'); void cell.el.offsetWidth; cell.el.classList.add('go'); });
+    if(!busy){ clearInterval(timer); timer=null; }
+  }
+  return { show(grid, instant){
+    cells.forEach((cell,i)=>{
+      const target=grid[Math.floor(i/COLS)][i%COLS]; cell.queue=[];
+      if(instant){ paint(cell,target); return; }
+      if(target===cell.cur) return;
+      const from=FLAPS.indexOf(cell.cur), to=FLAPS.indexOf(target);
+      const dist=(to-from+FLAPS.length)%FLAPS.length, steps=Math.min(dist, 10+Math.floor(Math.random()*8));
+      for(let s=steps-1;s>=0;s--) cell.queue.push(FLAPS[(to-s+FLAPS.length)%FLAPS.length]);
+      cell.delay=(i%COLS)+Math.floor(Math.random()*4);
     });
-  },
-  onDenied: function(err){
-    if (this.denied) return;
-    this.denied = true;
-    console.warn('Firebase refused access to "' + DB_PATH + '". Add it to the database rules.', err && err.message);
-    this.setStatus('denied');
-  },
-  write: function(path, v){
-    const self = this;
-    if (!this.ref) return false;
-    const r = this.ref.child(path);
-    const p = v === null ? r.remove() : r.set(v);
-    if (p && p.catch) p.catch(function(e){ self.onDenied(e); });
-    return true;
-  },
-  saveMessage: function(m){
-    this.data.messages[m.id] = m;
-    this.cache();
-    this.write('messages/' + m.id, cleanMsg(m));
-  },
-  removeMessage: function(id){
-    delete this.data.messages[id];
-    this.cache();
-    this.write('messages/' + id, null);
-  },
-  saveSettings: function(s){
-    this.data.settings = Object.assign({}, DEFAULT_SETTINGS, s);
-    this.cache();
-    this.write('settings', this.data.settings);
-  },
-  sendFlash: function(id){
-    const v = {id: id, nonce: Date.now().toString(36) + Math.random().toString(36).slice(2, 6)};
-    if (!this.write('flash', v)) lsSet(LS_FLASH, v);
-  },
-  setNow: function(id){
-    if (IS_EDITOR || this.denied) return;
-    const v = {id: id || '', at: Date.now()};
-    if (!this.write('now', v) && this.mode === 'local') lsSet(LS_NOW, v);
-  }
-};
-const S = function(){ return Store.data.settings; };
-const getMsg = function(id){ return id ? Store.data.messages[id] : null; };
-function sortedMessages(){
-  return Object.keys(Store.data.messages).map(function(k){ return Store.data.messages[k]; })
-    .sort(function(a, b){ return (a.order - b.order) || (a.id < b.id ? -1 : 1); });
-}
-function hasContent(m){ return !!(m && String(m.body || '').trim()); }
-function isPlayable(m, today){ return m.active && hasContent(m) && (!m.start || m.start <= today) && (!m.end || m.end >= today); }
-function holdMsg(){ const m = getMsg(S().holdId); return hasContent(m) ? m : null; }
-function buildSeq(){
-  const today = todayStr();
-  const list = sortedMessages().filter(function(m){ return isPlayable(m, today); });
-  let R = list.filter(function(m){ return !m.featured; });
-  const F = list.filter(function(m){ return m.featured; });
-  if (S().shuffle) R = shuffle(R);
-  if (!F.length) return R.map(function(m){ return m.id; });
-  if (!R.length) return F.map(function(m){ return m.id; });
-  const k = Math.max(1, Number(S().featureEvery) || 3);
-  const seq = []; let ri = 0, fi = 0;
-  while ((ri < R.length || fi < F.length) && seq.length < 600){
-    for (let j = 0; j < k; j++){
-      if (ri >= R.length && fi >= F.length) break;
-      seq.push(R[ri % R.length].id); ri++;
-    }
-    if (ri >= R.length && fi >= F.length) break;
-    seq.push(F[fi % F.length].id); fi++;
-  }
-  return seq;
-}
-const FALLBACK = normalizeMsg({id: '_fallback', type: 'custom', style: 'rainbow', body: 'THE TRAVEL AGENCY\n' + STORE_NAME});
-
-/* Product photos load through wsrv.nl, a free image resizer, so the TV never decodes a
-   full-size original (some menu photos are over 13,000 pixels wide). Uploaded photos are
-   already small and load as-is. */
-function photoUrl(u, w){
-  u = String(u || '').trim();
-  if (!u || /^data:/i.test(u) || !/^https?:\/\//i.test(u)) return u;
-  w = w || 900;
-  return 'https://wsrv.nl/?url=' + encodeURIComponent(u.replace(/^https?:\/\//i, '')) + '&w=' + w + '&h=' + w + '&fit=inside&we&output=jpg&q=85';
-}
-function showKey(m){
-  const res = layout(m || FALLBACK);
-  return gridKey(res.grid) + '|' + (res.photo ? m.image + '|' + m.caption : '');
-}
-const photoCache = {};   // url -> {src, at}; failures are retried after 10 minutes
-function tryImage(src, maxPixels){
-  return new Promise(function(res){
-    const im = new Image();
-    im.onload = function(){ res(maxPixels && im.naturalWidth * im.naturalHeight > maxPixels ? null : src); };
-    im.onerror = function(){ res(null); };
-    im.src = src;
-  });
-}
-function loadPhoto(u, timeoutMs){
-  u = String(u || '').trim();
-  if (!u) return Promise.resolve(null);
-  const c = photoCache[u];
-  if (c && (c.src || Date.now() - c.at < 10 * 60 * 1000)) return Promise.resolve(c.src);
-  const resized = photoUrl(u);
-  const attempt = tryImage(resized).then(function(src){
-    // resizer unavailable: use the original, but never one so large it could stall a TV
-    return src || (resized !== u ? tryImage(u, 24000000) : null);
-  }).then(function(src){ photoCache[u] = {src: src, at: Date.now()}; return src; });
-  if (!timeoutMs) return attempt;
-  return Promise.race([attempt, new Promise(function(r){ setTimeout(function(){ r(null); }, timeoutMs); })]);
+    if(!instant && !timer) timer=setInterval(tick,55);
+  }};
 }
 
-/* =====================================================================
-   BOARD (canvas split-flap renderer)
-   ===================================================================== */
-const Board = (function(){
-  let canvas, ctx, bg = null, glyphs = null, dpr = 1, photoEl, photoImg, photoCap, photoRegion = null;
-  let W = 0, H = 0, tw = 0, th = 0, gx = 0, gy = 0, ox = 0, oy = 0, gridW = 0, gridH = 0;
-  const tiles = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) tiles.push({r: r, c: c, cur: 0, target: 0, from: 0, to: 0, p: 0, delay: 0, anim: false});
-  let running = false, last = 0, settledCb = null, quick = false;
-  const STEP = 62, QUICK = 8, ASPECT = 1.75, GXR = 0.14, GYR = 0.30, PADX = 0.75, PADT = 0.75, PADB = 1.35;
-  const FONT = function(px){ return '600 ' + px + 'px "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif'; };
-
-  function rr(g, x, y, w, h, r){
-    g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
-    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
-    g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
-  }
-  function fontsReady(){
-    if (!document.fonts || !document.fonts.load) return Promise.resolve();
-    return Promise.race([document.fonts.load(FONT(40)), new Promise(function(r){ setTimeout(r, 2500); })]).catch(function(){});
-  }
-  function init(){
-    canvas = $('#board'); ctx = canvas.getContext('2d', {alpha: false});
-    photoEl = $('#photo'); photoImg = $('#photo img'); photoCap = $('#photo .cap');
-    let t; window.addEventListener('resize', function(){ clearTimeout(t); t = setTimeout(resize, 150); });
-    return fontsReady().then(function(){
-      resize();
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ resize(); });
-    });
-  }
-  function resize(){
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = Math.round(window.innerWidth * dpr); H = Math.round(window.innerHeight * dpr);
-    canvas.width = W; canvas.height = H;
-    const twW = (W * 0.96) / (COLS + (COLS - 1) * GXR + 2 * PADX);
-    const twH = (H * 0.93) / (ROWS * ASPECT + (ROWS - 1) * GYR + PADT + PADB);
-    tw = Math.max(4, Math.floor(Math.min(twW, twH)));
-    th = Math.round(tw * ASPECT);
-    gx = Math.max(1, Math.round(tw * GXR)); gy = Math.max(2, Math.round(tw * GYR));
-    gridW = COLS * tw + (COLS - 1) * gx; gridH = ROWS * th + (ROWS - 1) * gy;
-    const frameH = gridH + Math.round(tw * (PADT + PADB));
-    ox = Math.round((W - gridW) / 2); oy = Math.round((H - frameH) / 2 + tw * PADT);
-    buildBg(); glyphs = FLAP.map(makeGlyph); redrawAll(); placePhoto();
-  }
-  function placePhoto(){
-    if (!photoRegion || !tw) return;
-    const R = photoRegion, nc = R.c1 - R.c0, nr = R.r1 - R.r0;
-    const x = ox + R.c0 * (tw + gx), y = oy + R.r0 * (th + gy);
-    const w = (nc + 1) * tw + nc * gx, h = (nr + 1) * th + nr * gy;
-    photoEl.style.left = (x / dpr) + 'px'; photoEl.style.top = (y / dpr) + 'px';
-    photoEl.style.width = (w / dpr) + 'px'; photoEl.style.height = (h / dpr) + 'px';
-    photoEl.style.borderRadius = (tw * 0.12 / dpr) + 'px';
-    photoCap.style.fontSize = (tw * 0.34 / dpr) + 'px';
-  }
-  function showPhoto(src, caption, region){
-    photoRegion = region; photoCap.textContent = caption || ''; placePhoto();
-    photoImg.onload = function(){ photoEl.classList.add('show'); };
-    if (photoImg.src === src && photoImg.complete) photoEl.classList.add('show'); else photoImg.src = src;
-  }
-  function hidePhoto(){ photoEl.classList.remove('show'); }
-  function buildBg(){
-    bg = document.createElement('canvas'); bg.width = W; bg.height = H;
-    const g = bg.getContext('2d');
-    g.fillStyle = '#070707'; g.fillRect(0, 0, W, H);
-    // board frame, same treatment as the SoHo Board
-    const fx = Math.round(ox - tw * PADX), fy = Math.round(oy - tw * PADT);
-    const fw = Math.round(gridW + 2 * tw * PADX), fh = Math.round(gridH + tw * (PADT + PADB));
-    g.save(); g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = Math.round(tw * 1.2);
-    g.fillStyle = '#0B0B0B'; g.fillRect(fx, fy, fw, fh); g.restore();
-    g.strokeStyle = '#1C1C1C'; g.lineWidth = Math.max(1, Math.round(tw * 0.02));
-    g.strokeRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1);
-    const fs = Math.max(9, Math.round(tw * 0.26));
-    g.font = '600 ' + fs + 'px "Barlow Semi Condensed", Barlow, "Arial Narrow", Arial, sans-serif';
-    if ('letterSpacing' in g) g.letterSpacing = Math.round(fs * 0.34) + 'px';
-    g.fillStyle = '#3d3b37'; g.textAlign = 'right'; g.textBaseline = 'middle';
-    g.fillText('THE TRAVEL AGENCY', ox + gridW, oy + gridH + Math.round(tw * PADB * 0.55));
-  }
-  function makeGlyph(v){
-    const c = document.createElement('canvas'); c.width = tw; c.height = th;
-    const g = c.getContext('2d');
-    rr(g, 0, 0, tw, th, Math.max(1.5, tw * 0.07)); g.save(); g.clip();
-    if (isColor(v)){
-      g.fillStyle = COLORS[v[1]]; g.fillRect(0, 0, tw, th);
-      const sh = g.createLinearGradient(0, 0, 0, th);
-      sh.addColorStop(0, 'rgba(255,255,255,0.14)'); sh.addColorStop(0.5, 'rgba(255,255,255,0.02)');
-      sh.addColorStop(0.5, 'rgba(0,0,0,0.04)'); sh.addColorStop(1, 'rgba(0,0,0,0.24)');
-      g.fillStyle = sh; g.fillRect(0, 0, tw, th);
+/* ---------------- Storage ---------------- */
+const USE_FB = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('PASTE') && window.firebase;
+const LS_KEY='sohofloor_v2';
+let docRef=null;
+const store={
+  listen(cb){
+    if(USE_FB){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      docRef=firebase.firestore().collection('floorboard').doc('main');
+      docRef.onSnapshot(s=>{ if(!s.exists){ docRef.set(DEFAULT_STATE); cb(structuredClone(DEFAULT_STATE)); } else cb(s.data()); },
+        err=>{ console.error(err); setStatus('Connection problem','warn'); });
     } else {
-      const gr = g.createLinearGradient(0, 0, 0, th);
-      gr.addColorStop(0, '#242424'); gr.addColorStop(0.49, '#1B1B1B'); gr.addColorStop(0.51, '#141414'); gr.addColorStop(1, '#1B1B1B');
-      g.fillStyle = gr; g.fillRect(0, 0, tw, th);
-      if (v !== ' '){
-        const fs = Math.round(th * 0.58);
-        g.font = FONT(fs); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#F1F0EC';
-        const mH = g.measureText('H');
-        const capH = mH.actualBoundingBoxAscent || fs * 0.7;
-        const by = Math.round(th / 2 + capH / 2);
-        const mw = g.measureText(v).width, maxW = tw * 0.86;
-        if (mw > maxW){ g.save(); g.translate(tw / 2, 0); g.scale(maxW / mw, 1); g.fillText(v, 0, by); g.restore(); }
-        else g.fillText(v, tw / 2, by);
-      }
+      const read=()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || structuredClone(DEFAULT_STATE); }catch(e){ return structuredClone(DEFAULT_STATE); } };
+      cb(read()); addEventListener('storage',e=>{ if(e.key===LS_KEY) cb(read()); });
     }
-    const hinge = Math.max(1, Math.round(th * 0.014));
-    g.fillStyle = 'rgba(0,0,0,0.78)'; g.fillRect(0, Math.floor(th / 2) - Math.floor(hinge / 2), tw, hinge);
-    g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, tw, Math.max(1, Math.round(th * 0.01)));
-    g.restore();
-    return c;
-  }
-  function drawTile(t){
-    if (!glyphs) return;
-    const x = ox + t.c * (tw + gx), y = oy + t.r * (th + gy);
-    ctx.drawImage(bg, x - 1, y - 1, tw + 2, th + 2, x - 1, y - 1, tw + 2, th + 2);
-    if (!t.anim || t.delay > 0 || t.p <= 0){ ctx.drawImage(glyphs[t.cur], x, y); return; }
-    const A = glyphs[t.from], B = glyphs[t.to], hh = Math.floor(th / 2), hb = th - hh, p = t.p;
-    ctx.drawImage(B, 0, 0, tw, hh, x, y, tw, hh);
-    ctx.drawImage(A, 0, hh, tw, hb, x, y + hh, tw, hb);
-    if (p < 0.5){
-      const s = Math.cos(p * Math.PI), h = Math.max(1, Math.round(hh * s));
-      ctx.drawImage(A, 0, 0, tw, hh, x, y + hh - h, tw, h);
-      ctx.fillStyle = 'rgba(0,0,0,' + (0.55 * (1 - s)).toFixed(3) + ')'; ctx.fillRect(x, y + hh - h, tw, h);
-    } else {
-      const s2 = -Math.cos(p * Math.PI), h2 = Math.max(1, Math.round(hb * s2));
-      ctx.drawImage(B, 0, hh, tw, hb, x, y + hh, tw, h2);
-      ctx.fillStyle = 'rgba(0,0,0,' + (0.35 * (1 - s2)).toFixed(3) + ')'; ctx.fillRect(x, y + hh, tw, h2);
-    }
-  }
-  function redrawAll(){ if (!bg) return; ctx.drawImage(bg, 0, 0); tiles.forEach(drawTile); }
-  function frame(ts){
-    if (!last) last = ts;
-    const dt = Math.min(64, ts - last); last = ts;
-    let any = false;
-    for (let i = 0; i < tiles.length; i++){
-      const t = tiles[i];
-      if (!t.anim) continue;
-      any = true;
-      let step = dt;
-      if (t.delay > 0){ t.delay -= dt; if (t.delay > 0) continue; step = -t.delay; t.delay = 0; }
-      t.p += step / STEP;
-      while (t.p >= 1){
-        t.cur = t.to;
-        if (t.cur === t.target){ t.anim = false; t.p = 0; break; }
-        t.from = t.cur; t.to = (t.cur + 1) % N; t.p -= 1;
-      }
-      drawTile(t);
-    }
-    if (any) requestAnimationFrame(frame);
-    else { running = false; last = 0; const cb = settledCb; settledCb = null; if (cb) cb(); }
-  }
-  function setGrid(grid, cb){
-    settledCb = cb || null;
-    tiles.forEach(function(t){
-      const v = grid[t.r][t.c], ti = IDX[v] !== undefined ? IDX[v] : 0;
-      if (ti === t.target) return;
-      t.target = ti;
-      if (!t.anim && ti !== t.cur){
-        if (quick && (ti - t.cur + N) % N > QUICK) t.cur = (ti - QUICK + N) % N;
-        t.anim = true; t.p = 0; t.from = t.cur; t.to = (t.cur + 1) % N;
-        t.delay = t.c * 28 + t.r * 18 + Math.random() * 90;
-      }
-    });
-    const anyAnim = tiles.some(function(t){ return t.anim; });
-    if (anyAnim && !running){ running = true; last = 0; requestAnimationFrame(frame); }
-    else if (!anyAnim){ const c = settledCb; settledCb = null; if (c) setTimeout(c, 0); }
-  }
-  return {init: init, setGrid: setGrid, setQuick: function(v){ quick = !!v; }, showPhoto: showPhoto, hidePhoto: hidePhoto};
-})();
-
-/* =====================================================================
-   PLAYER (rotation, featured screens, pin, show-now)
-   ===================================================================== */
-const Player = {
-  seq: [], pos: -1, currentId: null, shownKey: '', dwell: null, token: null,
-  held: false, flashing: false, flashNonce: undefined, dataKey: '', started: false,
-  init: function(){
-    const self = this;
-    Store.on('data', function(){ self.onData(); });
-    Store.on('flash', function(f){ self.onFlash(f); });
-    document.addEventListener('keydown', function(e){
-      if (e.key === 'ArrowRight' || e.key === 'MediaTrackNext'){ self.flashing = false; self.next(1); }
-      else if (e.key === 'ArrowLeft' || e.key === 'MediaTrackPrevious'){ self.flashing = false; self.next(-1); }
-    });
-    setInterval(function(){ self.onData(); }, 60000);
-    setInterval(function(){ Store.setNow(self.currentId); }, 60000);
-    setTimeout(function(){ if (!self.started){ self.started = true; self.show(null); } }, 3500);
   },
-  dur: function(m){ const s = Number(m && m.duration) || Number(S().seconds) || 15; return Math.min(600, Math.max(4, s)); },
-  next: function(step){
-    step = step || 1;
-    clearTimeout(this.dwell);
-    this.started = true;
-    const hold = holdMsg();
-    if (hold){ this.held = true; return this.show(hold, {held: true}); }
-    this.held = false;
-    if (!this.seq.length) this.seq = buildSeq();
-    if (!this.seq.length){ this.pos = -1; return this.show(null); }
-    let p = this.pos + step;
-    if (p >= this.seq.length){
-      this.seq = buildSeq();
-      if (!this.seq.length){ this.pos = -1; return this.show(null); }
-      if (this.seq.length > 1 && this.seq[0] === this.currentId) this.seq.push(this.seq.shift());
-      p = 0;
-    } else if (p < 0) p = this.seq.length - 1;
-    this.pos = p;
-    this.show(getMsg(this.seq[p]) || null);
-  },
-  show: function(m, opts){
-    const self = this;
-    opts = opts || {};
-    clearTimeout(this.dwell);
-    Board.hidePhoto();
-    this.currentId = m ? m.id : null;
-    this.shownKey = showKey(m);
-    Store.setNow(this.currentId);
-    const token = {}; this.token = token;
-    const wantsPhoto = !!(m && String(m.image || '').trim());
-    (wantsPhoto ? loadPhoto(m.image, 6000) : Promise.resolve(null)).then(function(src){
-      if (self.token !== token) return;
-      // no photo available: lay the text out across the full board instead of leaving a gap
-      const res = layout(src ? m : (m ? Object.assign({}, m, {image: ''}) : FALLBACK));
-      self.flipTo(res, m, src, token, opts);
-    });
-  },
-  flipTo: function(res, m, src, token, opts){
-    const self = this;
-    Board.setGrid(res.grid, function(){
-      if (self.token !== token) return;
-      if (src && res.photo) Board.showPhoto(src, m.caption, res.photo);
-      if (opts.held) return;
-      self.dwell = setTimeout(function(){
-        if (self.token !== token) return;
-        if (opts.onDone) opts.onDone();
-        self.next(1);
-      }, self.dur(m) * 1000);
-    });
-  },
-  showFlash: function(m){
-    const self = this;
-    this.flashing = true;
-    this.show(m, {onDone: function(){ self.flashing = false; }});
-  },
-  onData: function(){
-    const key = JSON.stringify([Store.data.messages, Store.data.settings, todayStr()]);
-    if (key === this.dataKey) return;
-    this.dataKey = key;
-    Board.setQuick(S().flip === 'quick');
-    this.seq = buildSeq();
-    const hold = holdMsg();
-    if (hold){
-      if (!this.held || this.currentId !== hold.id || showKey(hold) !== this.shownKey){
-        this.held = true; this.flashing = false; this.show(hold, {held: true});
-      }
-      return;
-    }
-    if (this.held){ this.held = false; this.pos = -1; return this.next(1); }
-    if (this.flashing){
-      const fm = getMsg(this.currentId);
-      if (fm && showKey(fm) !== this.shownKey) this.showFlash(fm);
-      return;
-    }
-    if (!this.started) return this.next(1);
-    this.pos = this.currentId ? this.seq.indexOf(this.currentId) : -1;
-    const cur = getMsg(this.currentId);
-    if (!cur || this.pos === -1) return this.next(1);
-    if (showKey(cur) !== this.shownKey) this.show(cur);
-  },
-  onFlash: function(f){
-    const nonce = f && f.nonce ? f.nonce : null;
-    if (this.flashNonce === undefined){ this.flashNonce = nonce; return; }
-    if (!nonce || nonce === this.flashNonce) return;
-    this.flashNonce = nonce;
-    const m = getMsg(f.id);
-    if (!hasContent(m)) return;
-    const hold = holdMsg();
-    if (hold && hold.id === m.id) return;
-    this.showFlash(m);
+  save(state){
+    if(USE_FB) return docRef.set(state);
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+    return Promise.resolve();
   }
 };
 
-/* ---------- keep the TV awake ---------- */
-function keepAwake(){
-  let lock = null;
-  const v = $('#keepawake'), nudge = $('#nudge');
-  const playVid = function(){ try { const p = v.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {} };
-  const req = function(){
-    if (!('wakeLock' in navigator) || document.visibilityState !== 'visible' || lock) return;
-    navigator.wakeLock.request('screen').then(function(l){ lock = l; l.addEventListener('release', function(){ lock = null; }); }).catch(function(){});
-  };
-  req(); playVid();
-  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible'){ req(); playVid(); } });
-  ['click', 'keydown', 'touchstart'].forEach(function(ev){ document.addEventListener(ev, function(){ req(); playVid(); }, {passive: true}); });
-  let flip = 0;
-  setInterval(function(){ req(); playVid(); flip = 1 - flip; nudge.style.transform = 'translateX(' + flip + 'px)'; }, 4 * 60 * 1000);
+/* ---------------- TV ---------------- */
+function clockText(){
+  const d=new Date();
+  return "{Y}{O}{R}{V}{B}{G}\n"+d.toLocaleDateString('en-US',{weekday:'long'})+"\n"+
+    d.toLocaleDateString('en-US',{month:'long',day:'numeric'})+"\n"+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+"\n{G}{B}{V}{R}{O}{Y}";
+}
+function startTV(){
+  document.body.className='tv';
+  document.getElementById('app').innerHTML='<div class="stage" id="stage"></div><div class="hint">Click for fullscreen · arrow keys to skip</div>';
+  const fit=()=>{ const byW=innerWidth*.94/(COLS*1.12+1.1), byH=innerHeight*.9/(ROWS*1.32+(ROWS-1)*.12+1.1);
+    document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px'); };
+  fit(); addEventListener('resize',fit);
+  const board=makeBoard(document.getElementById('stage'));
+  let state=null, idx=-1, timer=null;
+  const playlist=()=>{ const l=(state.messages||[]).filter(isLive).map(m=>compose(m)); if(state.settings?.clock && l.length) l.push('__clock'); return l; };
+  function next(step=1){
+    clearTimeout(timer); const list=playlist();
+    if(!list.length){ board.show(layout("THE TRAVEL AGENCY\nSOHO").grid); return; }
+    idx=(idx+step+list.length)%list.length;
+    board.show(layout(list[idx]==='__clock'?clockText():list[idx]).grid);
+    timer=setTimeout(()=>next(1), Math.max(5,+state.settings?.seconds||15)*1000);
+  }
+  store.listen(s=>{ const first=!state; state=s; if(first) next(1); });
+  document.addEventListener('click',()=>{ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); });
+  document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight') next(1); if(e.key==='ArrowLeft') next(-1); });
+  setTimeout(()=>location.reload(), 6*60*60*1000);
 }
 
-/* =====================================================================
-   EDITOR (open the page with ?edit on your phone)
-   ===================================================================== */
-const pending = {}, saveTimers = {};
-function editField(id, f, v){
-  const m = getMsg(id); if (!m) return null;
-  m[f] = v;
-  if (!pending[id]) pending[id] = {};
-  pending[id][f] = v;
-  clearTimeout(saveTimers[id]);
-  saveTimers[id] = setTimeout(function(){ flush(id); }, 450);
-  return m;
-}
-function flush(id){
-  clearTimeout(saveTimers[id]);
-  const m = getMsg(id); if (!m){ delete pending[id]; return; }
-  Object.assign(m, pending[id] || {}); delete pending[id];
-  Store.saveMessage(m);
-}
-function miniHTML(res, m){
-  const grid = res.grid;
-  let h = '<div class="mg">';
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++){
-    const v = grid[r][c];
-    h += isColor(v) ? '<i style="background:' + COLORS[v[1]] + '"></i>' : '<i>' + (v === ' ' ? '' : esc(v)) + '</i>';
-  }
-  if (res.photo && m && m.image){
-    const P = res.photo;
-    h += '<div class="mph" style="grid-column:' + (P.c0 + 1) + '/' + (P.c1 + 2) + ';grid-row:' + (P.r0 + 1) + '/' + (P.r1 + 2) + '"><img src="' + esc(photoUrl(m.image, 320)) + '" data-orig="' + esc(m.image) + '" onerror="if(this.dataset.orig&amp;&amp;this.src!==this.dataset.orig)this.src=this.dataset.orig" alt="" loading="lazy"></div>';
-  }
-  return h + '</div>';
-}
-function statusOf(m){
-  const t = todayStr();
-  if (!hasContent(m)) return ['empty', 'Needs a message'];
-  if (!m.active) return ['off', 'Off'];
-  if (m.start && m.start > t) return ['sched', 'Starts ' + fmtDate(m.start)];
-  if (m.end && m.end < t) return ['ended', 'Ended ' + fmtDate(m.end)];
-  return ['live', m.end ? 'Live until ' + fmtDate(m.end) : 'Live'];
-}
-function firstLine(m){
-  const lines = String(m.body || '').split('\n').map(function(s){ return s.replace(/\{[ROYGBVW]\}/gi, '').trim(); }).filter(Boolean);
-  return (lines[0] || m.header || '').toUpperCase();
-}
-function warnText(m, res){
-  const out = [];
-  if (res.overflow) out.push('Too long: ' + res.overflow + ' line' + (res.overflow > 1 ? 's' : '') + " won't fit." + (m.style === 'banner' ? ' Shorten it or switch the layout to Plain.' : ' Shorten it a little.'));
-  if (res.bad.length) out.push('Not on the board, will be skipped: ' + res.bad.join(' '));
-  return out.join(' ');
-}
-function toast(msg){
-  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2200);
-}
+/* ---------------- Editor ---------------- */
+let statusEl=null;
+function setStatus(t,cls){ if(statusEl){ statusEl.textContent=t; statusEl.className='status '+(cls||''); } }
 
-const Editor = {
-  expanded: null, pendingRender: false,
-  init: function(){
-    const self = this;
-    this.list = $('#ed-list');
-    Store.on('data', function(){ self.onData(); });
-    Store.on('status', function(s){ self.renderStatus(s); });
-    Store.on('now', function(){ self.renderNow(); self.markOnTv(); });
-    $('#open-board').href = location.pathname;
-    document.querySelectorAll('[data-add]').forEach(function(b){ b.addEventListener('click', function(){ self.add(b.dataset.add); }); });
-    this.list.addEventListener('click', function(e){ self.onClick(e); });
-    this.list.addEventListener('input', function(e){ self.onInput(e); });
-    this.list.addEventListener('change', function(e){ self.onChange(e); });
-    this.list.addEventListener('mousedown', function(e){ if (e.target.closest('[data-ins]')) e.preventDefault(); });
-    $('#ed-hold').addEventListener('click', function(e){ if (e.target.closest('[data-unpin]')){ self.saveSetting({holdId: ''}); toast('Unpinned'); } });
-    $('#set-seconds').addEventListener('change', function(e){ const n = Math.min(300, Math.max(4, Math.round(Number(e.target.value) || 15))); e.target.value = n; self.saveSetting({seconds: n}); });
-    $('#set-shuffle').addEventListener('change', function(e){ self.saveSetting({shuffle: e.target.checked}); });
-    $('#set-every').addEventListener('change', function(e){ self.saveSetting({featureEvery: Number(e.target.value)}); });
-    $('#set-flip').addEventListener('change', function(e){ self.saveSetting({flip: e.target.value}); });
-    document.addEventListener('focusout', function(){ setTimeout(function(){ if (self.pendingRender && !self.typing()) self.render(); }, 60); });
-    setInterval(function(){ self.renderNow(); }, 30000);
-  },
-  typing: function(){
-    const a = document.activeElement;
-    return !!a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && /^(text|number|date|search)$/.test(a.type)));
-  },
-  onData: function(){
-    Object.keys(pending).forEach(function(id){ const m = getMsg(id); if (m) Object.assign(m, pending[id]); });
-    if (this.typing()){ this.pendingRender = true; return; }
-    this.render();
-  },
-  saveSetting: function(patch){ Store.saveSettings(Object.assign({}, S(), patch)); this.render(); },
-  renderStatus: function(s){
-    const el = $('#ed-status');
-    const map = {local: ['This device only', 'off'], connecting: ['Connecting', ''], live: ['Synced', 'live'], offline: ['Offline, retrying', 'off'], denied: ['Firebase blocked', 'off']};
-    const v = map[s] || map.connecting;
-    el.textContent = v[0]; el.className = 'pill ' + v[1];
-    this.renderNow();
-  },
-  renderNow: function(){
-    const el = $('#ed-now');
-    if (Store.mode === 'local'){ el.textContent = 'Add your Firebase config to the file to edit from your phone.'; return; }
-    if (Store.status === 'denied'){ el.textContent = 'Firebase is blocking the ' + DB_PATH + ' spot, so changes here will not reach the TV. Add it to your database rules.'; return; }
-    const n = Store.now;
-    if (!n || !n.at){ el.textContent = ''; return; }
-    if (Date.now() - n.at > 3 * 60 * 1000){
-      const d = new Date(n.at);
-      el.textContent = 'TV last checked in ' + d.toLocaleString([], {weekday: 'short', hour: 'numeric', minute: '2-digit'});
-      return;
-    }
-    const m = getMsg(n.id);
-    el.innerHTML = 'On the TV now: <b>' + esc(m ? firstLine(m) : 'THE TRAVEL AGENCY') + '</b>';
-  },
-  onTv: function(id){ const n = Store.now; return !!(n && n.id === id && Date.now() - n.at < 3 * 60 * 1000); },
-  markOnTv: function(){
-    const self = this;
-    this.list.querySelectorAll('.card').forEach(function(c){ c.classList.toggle('ontv', self.onTv(c.dataset.id)); });
-  },
-  render: function(){
-    const self = this;
-    this.pendingRender = false;
-    const msgs = sortedMessages();
-    this.list.innerHTML = msgs.length ? msgs.map(function(m){ return self.cardHTML(m); }).join('') : '<div class="empty">No screens yet. Add one above.</div>';
-    const s = S();
-    if (document.activeElement !== $('#set-seconds')) $('#set-seconds').value = s.seconds;
-    $('#set-shuffle').checked = !!s.shuffle;
-    $('#set-every').value = String(s.featureEvery);
-    $('#set-flip').value = s.flip;
-    const hold = holdMsg(), hb = $('#ed-hold');
-    if (hold){ hb.hidden = false; hb.innerHTML = '<span>Pinned on the TV: <b>' + esc(firstLine(hold)) + '</b></span><button data-unpin>Unpin</button>'; }
-    else hb.hidden = true;
-    this.renderNow();
-  },
-  cardHTML: function(m){
-    const t = TYPES[m.type], st = statusOf(m), open = this.expanded === m.id, res = layout(m);
-    const pinned = S().holdId === m.id;
-    return '<div class="card st-' + st[0] + (open ? ' open' : '') + (this.onTv(m.id) ? ' ontv' : '') + '" data-id="' + esc(m.id) + '">' +
-      '<div class="card-top"><div class="mini">' + miniHTML(res, m) + '</div>' +
-      '<div class="meta"><span class="chip" style="--c:' + COLORS[TYPE_COLOR[m.type]] + '">' + t.label + '</span>' +
-      '<span class="chip feat"' + (m.featured ? '' : ' hidden') + '>Featured</span>' +
-      (pinned ? '<span class="chip pin">Pinned</span>' : '') +
-      '<span class="chip tv">On TV</span>' +
-      '<span class="status">' + esc(st[1]) + '</span>' +
-      '<input type="checkbox" class="tog" data-f="active"' + (m.active ? ' checked' : '') + ' aria-label="Show this screen"></div></div>' +
-      (open ? this.fieldsHTML(m, res, pinned) : '') + '</div>';
-  },
-  fieldsHTML: function(m, res, pinned){
-    const t = TYPES[m.type];
-    const seg = function(attr, val, opts){
-      return '<div class="seg">' + opts.map(function(o){ return '<button type="button" data-' + attr + '="' + o[0] + '" class="' + (val === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>';
-    };
-    const sw = function(attr, val){
-      return '<div class="swatches">' + COLOR_KEYS.map(function(k){ return '<button type="button" data-' + attr + '="' + k + '" class="' + (val === k ? 'on' : '') + '" style="--c:' + COLORS[k] + '" aria-label="' + COLOR_NAMES[k] + '"></button>'; }).join('') + '</div>';
-    };
-    const w = warnText(m, res);
-    return '<div class="fields">' +
-      '<div class="f2"><label>Type<select data-f="type">' + TYPE_ORDER.map(function(k){ return '<option value="' + k + '"' + (k === m.type ? ' selected' : '') + '>' + TYPES[k].label + '</option>'; }).join('') + '</select></label>' +
-      '<label>Seconds<input type="number" data-f="duration" min="4" max="300" inputmode="numeric" placeholder="' + S().seconds + '" value="' + esc(m.duration) + '"></label></div>' +
-      '<div class="line"><span class="lbl">Layout</span>' + seg('style', m.style, [['banner','Header'],['rainbow','Rainbow'],['plain','Plain']]) + '</div>' +
-      (m.style === 'banner' ? '<label><span class="lab">Header <span class="count">' + (m.header || '').length + '/22</span></span><input type="text" data-f="header" maxlength="22" autocomplete="off" placeholder="' + esc(t.header || 'HEADER') + '" value="' + esc(m.header) + '"></label>' : '') +
-      '<label>Message<textarea data-f="body" rows="5" spellcheck="false" autocomplete="off">' + esc(m.body) + '</textarea></label>' +
-      '<label><span class="lab">Photo <span class="count">' + (m.image ? 'shows on the right' : 'optional') + '</span></span><input type="text" data-f="image" inputmode="url" autocomplete="off" placeholder="' + (/^data:/i.test(m.image) ? 'Uploaded photo (paste a link to replace)' : 'Paste an image link') + '" value="' + (/^data:/i.test(m.image) ? '' : esc(m.image)) + '"></label>' +
-      '<div class="line"><span class="lbl">Or upload a photo</span><span class="btns"><label class="filebtn">Upload<input type="file" accept="image/*" data-upload hidden></label>' + (m.image ? '<button type="button" data-act="nophoto">Remove</button>' : '') + '</span></div>' +
-      (m.image ? '<label><span class="lab">Photo caption <span class="count">' + (m.caption || '').length + '/60</span></span><input type="text" data-f="caption" maxlength="60" autocomplete="off" placeholder="Short description under the photo" value="' + esc(m.caption) + '"></label>' : '') +
-      '<div class="line"><span class="lbl">Add a color tile</span>' + sw('ins', '') + '</div>' +
-      '<div class="warn' + (w ? ' show' : '') + '">' + esc(w) + '</div>' +
-      (m.style === 'banner' ? '<div class="line"><span class="lbl">Header color</span>' + sw('acc', m.accent) + '</div>' : '') +
-      '<div class="line"><span class="lbl">Align</span>' + seg('align', m.align, [['center','Center'],['left','Left']]) + '</div>' +
-      '<div class="f2"><label>Starts<input type="date" data-f="start" value="' + esc(m.start) + '"></label><label>Ends<input type="date" data-f="end" value="' + esc(m.end) + '"></label></div>' +
-      '<label class="row"><span>Featured, shows up more often</span><input type="checkbox" class="tog" data-f="featured"' + (m.featured ? ' checked' : '') + '></label>' +
-      '<div class="actions"><button type="button" class="primary" data-act="flash">Show on TV now</button>' +
-      '<button type="button" data-act="pin">' + (pinned ? 'Unpin' : 'Pin on TV') + '</button>' +
-      '<button type="button" data-act="up">Move up</button><button type="button" data-act="down">Move down</button>' +
-      '<button type="button" data-act="dup">Duplicate</button><button type="button" class="danger" data-act="del">Delete</button></div>' +
-      '</div>';
-  },
-  refreshCard: function(card, m){
-    const res = layout(m), st = statusOf(m);
-    card.querySelector('.mini').innerHTML = miniHTML(res, m);
-    const w = card.querySelector('.warn');
-    if (w){ const txt = warnText(m, res); w.textContent = txt; w.classList.toggle('show', !!txt); }
-    const hc = card.querySelector('input[data-f=header]'); if (hc) hc.closest('label').querySelector('.count').textContent = (m.header || '').length + '/22';
-    const cc = card.querySelector('input[data-f=caption]'); if (cc) cc.closest('label').querySelector('.count').textContent = (m.caption || '').length + '/60';
-    card.querySelector('.status').textContent = st[1];
-    card.classList.remove('st-live', 'st-off', 'st-sched', 'st-ended', 'st-empty'); card.classList.add('st-' + st[0]);
-    const f = card.querySelector('.chip.feat'); if (f) f.hidden = !m.featured;
-  },
-  onInput: function(e){
-    const el = e.target, f = el.dataset.f;
-    if (!f || el.type === 'checkbox' || el.tagName === 'SELECT') return;
-    const card = el.closest('.card'), id = card.dataset.id;
-    let v = el.value;
-    if (f === 'duration') v = el.value === '' ? '' : Math.min(600, Math.max(1, Math.round(Number(el.value) || 0))) || '';
-    const m = editField(id, f, v);
-    if (m) this.refreshCard(card, m);
-  },
-  onChange: function(e){
-    const el = e.target, f = el.dataset.f;
-    if (el.hasAttribute && el.hasAttribute('data-upload')){ this.upload(el); return; }
-    if (!f) return;
-    const card = el.closest('.card'), id = card.dataset.id;
-    if (f === 'image'){ flush(id); this.render(); return; }
-    if (f === 'type'){
-      const t = TYPES[el.value];
-      editField(id, 'type', el.value); editField(id, 'style', t.style); editField(id, 'accent', t.accent); editField(id, 'header', '');
-      flush(id); this.render(); return;
-    }
-    if (el.type === 'checkbox'){
-      const m = editField(id, f, el.checked); flush(id);
-      if (m) this.refreshCard(card, m);
-      return;
-    }
-    if (el.type === 'date' || el.type === 'number') flush(id);
-  },
-  onClick: function(e){
-    const self = this;
-    const card = e.target.closest('.card'); if (!card) return;
-    const id = card.dataset.id, m = getMsg(id); if (!m) return;
-    if (e.target.closest('.tog')) return;
-    const ins = e.target.closest('[data-ins]');
-    if (ins){
-      const ta = card.querySelector('textarea[data-f=body]');
-      const s = typeof ta.selectionStart === 'number' ? ta.selectionStart : ta.value.length;
-      const en = typeof ta.selectionEnd === 'number' ? ta.selectionEnd : s;
-      ta.value = ta.value.slice(0, s) + '{' + ins.dataset.ins + '}' + ta.value.slice(en);
-      ta.focus(); ta.setSelectionRange(s + 3, s + 3);
-      ta.dispatchEvent(new Event('input', {bubbles: true}));
-      return;
-    }
-    const acc = e.target.closest('[data-acc]');
-    if (acc){ editField(id, 'accent', acc.dataset.acc); flush(id); this.render(); return; }
-    const sty = e.target.closest('[data-style]');
-    if (sty){ editField(id, 'style', sty.dataset.style); flush(id); this.render(); return; }
-    const al = e.target.closest('[data-align]');
-    if (al){ editField(id, 'align', al.dataset.align); flush(id); this.render(); return; }
-    const act = e.target.closest('[data-act]');
-    if (act){
-      const a = act.dataset.act;
-      if (a === 'flash'){
-        flush(id);
-        if (!hasContent(m)) return toast('Add a message first');
-        Store.sendFlash(id);
-        toast(Store.mode === 'local' ? 'Showing on the board in this browser' : 'Sent to the TV');
-      } else if (a === 'pin'){
-        flush(id);
-        const pinned = S().holdId === id;
-        this.saveSetting({holdId: pinned ? '' : id});
-        toast(pinned ? 'Unpinned' : 'Pinned on the TV');
-      } else if (a === 'up' || a === 'down'){
-        this.move(id, a === 'up' ? -1 : 1);
-      } else if (a === 'dup'){
-        flush(id);
-        const copy = cleanMsg(Object.assign({}, m, {id: newId()}));
-        Store.data.messages[copy.id] = copy;
-        const list = sortedMessages().filter(function(x){ return x.id !== copy.id; });
-        list.splice(list.indexOf(m) + 1, 0, copy);
-        this.saveOrder(list, copy.id);
-        this.expanded = copy.id; this.render(); this.scrollTo(copy.id);
-        toast('Duplicated');
-      } else if (a === 'nophoto'){
-        editField(id, 'image', ''); flush(id); this.render();
-      } else if (a === 'del'){
-        if (!window.confirm('Delete this screen?')) return;
-        delete pending[id]; clearTimeout(saveTimers[id]);
-        if (S().holdId === id) Store.saveSettings(Object.assign({}, S(), {holdId: ''}));
-        Store.removeMessage(id);
-        if (this.expanded === id) this.expanded = null;
-        this.render(); toast('Deleted');
-      }
-      return;
-    }
-    if (e.target.closest('.card-top')){
-      this.expanded = this.expanded === id ? null : id;
-      this.render();
-      if (this.expanded) this.scrollTo(id);
-    }
-  },
-  upload: function(input){
-    const self = this, file = input.files && input.files[0];
-    const card = input.closest('.card'); if (!file || !card) return;
-    const id = card.dataset.id;
-    const url = URL.createObjectURL(file);
-    const im = new Image();
-    im.onload = function(){
-      const max = 720, k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
-      const c = document.createElement('canvas');
-      c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
-      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-      g.drawImage(im, 0, 0, c.width, c.height);
-      let q = 0.82, data = c.toDataURL('image/jpeg', q);
-      while (data.length > 180000 && q > 0.45){ q -= 0.1; data = c.toDataURL('image/jpeg', q); }
-      URL.revokeObjectURL(url);
-      editField(id, 'image', data); flush(id); self.render(); toast('Photo added');
-    };
-    im.onerror = function(){ URL.revokeObjectURL(url); toast("That photo couldn't be read"); };
-    im.src = url;
-  },
-  scrollTo: function(id){
-    const c = this.list.querySelector('.card[data-id="' + id + '"]');
-    if (c && c.scrollIntoView) c.scrollIntoView({block: 'nearest', behavior: 'smooth'});
-  },
-  saveOrder: function(list, forceId){
-    list.forEach(function(x, i){ if (x.order !== i || x.id === forceId){ x.order = i; Store.saveMessage(x); } });
-  },
-  move: function(id, dir){
-    const list = sortedMessages();
-    const i = list.findIndex(function(x){ return x.id === id; }), j = i + dir;
-    if (i < 0 || j < 0 || j >= list.length) return;
-    flush(id);
-    const t = list[i]; list[i] = list[j]; list[j] = t;
-    this.saveOrder(list);
-    this.render(); this.scrollTo(id);
-  },
-  add: function(type){
-    const t = TYPES[type];
-    const m = cleanMsg({id: newId(), type: type, style: t.style, accent: t.accent, header: '', body: '', active: true, featured: type === 'deal', order: -1});
-    Store.data.messages[m.id] = m;
-    const list = [m].concat(sortedMessages().filter(function(x){ return x.id !== m.id; }));
-    this.saveOrder(list, m.id);
-    this.expanded = m.id; this.render(); this.scrollTo(m.id);
-    const ta = this.list.querySelector('.card[data-id="' + m.id + '"] textarea');
-    if (ta) ta.focus();
-  }
-};
+function startAdmin(){
+  document.body.className='admin';
+  const app=document.getElementById('app');
+  app.innerHTML=`
+  <div class="wrap">
+    <div class="top">
+      <h1>FLOOR BOARD <span>EDITOR</span></h1>
+      <span class="status" id="status"></span>
+    </div>
+    <p class="sub">Add what you want customers to see. The board on the TV cycles through everything that's switched on.</p>
 
-/* ---------- start ---------- */
-if (IS_EDITOR){
-  document.body.classList.add('edit-mode');
-  $('#board-view').remove();
-  $('#editor').hidden = false;
-  const unlock = function(){
-    $('#gate').remove(); $('#ed-main').hidden = false;
-    Editor.init(); Store.init();
-  };
-  let ok = false;
-  try { ok = sessionStorage.getItem('sohoFloorPin') === PIN; } catch (e) {}
-  if (ok) unlock();
-  else {
-    $('#ed-status').hidden = true;
-    $('#gateForm').addEventListener('submit', function(ev){
-      ev.preventDefault();
-      if ($('#pinInput').value.trim().toUpperCase() === PIN){
-        try { sessionStorage.setItem('sohoFloorPin', PIN); } catch (e) {}
-        $('#ed-status').hidden = false; unlock();
-      } else $('#gateMsg').textContent = "That PIN didn't match. Try again.";
+    <h2>Add to the board</h2>
+    <div class="add">
+      ${Object.entries(KINDS).map(([k,v])=>`<button data-add="${k}"><span class="dot" style="background:var(--${v.color})"></span><b>${v.label}</b><small>${v.help}</small></button>`).join('')}
+    </div>
+
+    <h2>On the board now</h2>
+    <div class="cards" id="cards"></div>
+
+    <h2>Board settings</h2>
+    <div class="settings">
+      <label>Show each message for
+        <select id="secs">${[8,10,15,20,30,45,60].map(s=>`<option value="${s}">${s} seconds</option>`).join('')}</select>
+      </label>
+      <label class="switch"><input type="checkbox" id="clock"><i></i>Show the date and time</label>
+      <button id="openTV">Open the TV board ↗</button>
+    </div>
+    ${USE_FB?'':'<div class="local">Not synced yet: changes save only on this device until the board is connected to its own Firebase project.</div>'}
+  </div>
+  <div id="sheetHost"></div>`;
+  statusEl=document.getElementById('status');
+  const $=id=>document.getElementById(id);
+  let state=null, saveT=null, lastLocal=0, editing=null;
+
+  function save(){
+    clearTimeout(saveT); setStatus('Saving…');
+    saveT=setTimeout(()=>{ lastLocal=Date.now(); store.save(state).then(()=>setStatus('Saved ✓','ok')).catch(e=>setStatus('Could not save','warn')); },400);
+  }
+
+  function renderCards(){
+    const host=$('cards'); host.innerHTML='';
+    if(!state.messages.length){ host.innerHTML='<div class="empty">Nothing on the board yet. Pick something to add above.</div>'; return; }
+    state.messages.forEach((m,i)=>{
+      const k=KINDS[m.kind]||KINDS.note, expired=m.until && todayStr()>m.until;
+      const card=document.createElement('div'); card.className='card'+(isLive(m)?'':' off');
+      card.innerHTML=`<div class="mini" title="Edit"></div>
+        <div class="info">
+          <div class="kind"><span class="dot" style="background:var(--${m.color||'K'})"></span>${k.label}</div>
+          <div class="when ${expired?'exp':''}">${expired?'Ended '+niceDate(m.until)+', no longer showing':m.until?'Showing until '+niceDate(m.until):'Showing every cycle'}</div>
+          <div class="acts">
+            <label class="switch"><input type="checkbox" ${m.on?'checked':''}><i></i>${m.on?'On':'Off'}</label>
+            <button data-a="edit">Edit</button>
+            <button data-a="up" class="btn-link" ${i===0?'disabled':''} title="Move up">▲</button>
+            <button data-a="down" class="btn-link" ${i===state.messages.length-1?'disabled':''} title="Move down">▼</button>
+          </div>
+        </div>`;
+      makeBoard(card.querySelector('.mini')).show(layout(compose(m)).grid,true);
+      card.querySelector('.mini').onclick=()=>openSheet(m.id);
+      card.querySelector('input').onchange=e=>{ m.on=e.target.checked; renderCards(); save(); };
+      card.querySelector('[data-a=edit]').onclick=()=>openSheet(m.id);
+      card.querySelector('[data-a=up]').onclick=()=>{ [state.messages[i-1],state.messages[i]]=[state.messages[i],state.messages[i-1]]; renderCards(); save(); };
+      card.querySelector('[data-a=down]').onclick=()=>{ [state.messages[i+1],state.messages[i]]=[state.messages[i],state.messages[i+1]]; renderCards(); save(); };
+      host.appendChild(card);
     });
-    $('#pinInput').focus();
   }
-} else {
-  document.body.classList.add('board-mode');
-  $('#editor').remove();
-  keepAwake();
-  Store.on('status', function(s){ $('#dot').classList.toggle('on', s === 'live'); });
-  Board.init().then(function(){ Player.init(); Store.init(); });
+
+  function formFor(m){
+    const f=m.f, inp=(key,label,ph,hint)=>`<label class="field"><span>${label}${hint?` <em>${hint}</em>`:''}</span><input type="text" data-k="${key}" value="${esc(f[key])}" placeholder="${esc(ph)}"></label>`;
+    if(m.kind==='spotlight') return `
+      <label class="field"><span>Category</span><select data-k="cat">${CATS.map(c=>`<option value="${c}" ${f.cat===c?'selected':''}>${c||'(none)'}</option>`).join('')}</select></label>
+      ${inp('name','Product name','e.g. Blue Dream 3.5g')}
+      <div class="two">${inp('brand','Brand','e.g. Brand name','(optional)')}${inp('price','Price','e.g. 45','(optional)')}</div>
+      ${inp('note','Extra line','e.g. Ask your budtender','(optional)')}`;
+    if(m.kind==='deal') return `
+      ${inp('headline','Headline','e.g. 20% off')}
+      ${inp('item',"What's on sale",'e.g. All pre-rolls')}
+      ${inp('fine','Fine print','e.g. While supplies last','(optional)')}`;
+    if(m.kind==='fact') return `
+      <label class="field"><span>The fun fact</span><textarea data-k="fact" rows="3" placeholder="Type the fact. It wraps on its own.">${esc(f.fact)}</textarea></label>`;
+    return `<div class="field lines"><span>Your message <em>(one row of the board per box, up to 22 letters each)</em></span>
+      ${[0,1,2,3,4,5].map(i=>`<input type="text" maxlength="22" data-line="${i}" value="${esc((f.lines||[])[i]||'')}" placeholder="Row ${i+1}"><div class="count" data-count="${i}"></div>`).join('')}</div>`;
+  }
+
+  function openSheet(id){
+    const m=state.messages.find(x=>x.id===id); if(!m) return; editing=id;
+    const k=KINDS[m.kind]||KINDS.note;
+    $('sheetHost').innerHTML=`<div class="sheet-bg"><div class="sheet">
+      <h3><span class="dot" style="background:var(--${k.color})"></span>${k.label}</h3>
+      <div class="pv" id="pv"></div>
+      <div class="warn" id="warn"></div>
+      ${formFor(m)}
+      <div class="field"><span>Color</span><div class="colors" id="colors">
+        ${COLORS.map(c=>`<button data-c="${c}" style="background:var(--${c})" class="${m.color===c?'sel':''}" title="${c}"></button>`).join('')}
+        <button data-c="" class="none ${!m.color?'sel':''}">None</button></div></div>
+      <div class="two">
+        <label class="field"><span>Stop showing after <em>(optional)</em></span><input type="date" id="until" value="${m.until||''}"></label>
+        <div class="field"><span>On the board</span><label class="switch"><input type="checkbox" id="on" ${m.on?'checked':''}><i></i>Show it</label></div>
+      </div>
+      <div class="sheet-acts"><button class="btn-del" id="del">Delete</button><button class="btn-pri" id="done">Done</button></div>
+    </div></div>`;
+    const pv=makeBoard($('pv'));
+    const refresh=(instant)=>{
+      const L=layout(compose(m)); pv.show(L.grid,instant);
+      $('warn').textContent=L.overflow?'Too much text to fit. Try shortening it.':'';
+      document.querySelectorAll('[data-count]').forEach(el=>{ const n=((m.f.lines||[])[+el.dataset.count]||'').length; el.textContent=n?n+'/22':''; });
+    };
+    refresh(true);
+    document.querySelectorAll('.sheet [data-k]').forEach(el=>{ el.addEventListener('input',()=>{ m.f[el.dataset.k]=el.value; refresh(true); save(); }); });
+    document.querySelectorAll('.sheet [data-line]').forEach(el=>{ el.addEventListener('input',()=>{ m.f.lines=m.f.lines||['','','','','','']; m.f.lines[+el.dataset.line]=el.value; refresh(true); save(); }); });
+    $('colors').querySelectorAll('button').forEach(b=>b.onclick=()=>{ m.color=b.dataset.c; $('colors').querySelectorAll('button').forEach(x=>x.classList.toggle('sel',x===b)); refresh(true); save(); });
+    $('until').onchange=e=>{ m.until=e.target.value; refresh(true); save(); };
+    $('on').onchange=e=>{ m.on=e.target.checked; save(); };
+    const close=()=>{ editing=null; $('sheetHost').innerHTML=''; renderCards(); };
+    $('done').onclick=close;
+    document.querySelector('.sheet-bg').onclick=e=>{ if(e.target.classList.contains('sheet-bg')) close(); };
+    $('del').onclick=()=>{ if(!confirm('Delete this from the board?')) return; state.messages=state.messages.filter(x=>x!==m); save(); close(); };
+    const firstInput=document.querySelector('.sheet input[type=text], .sheet textarea'); if(firstInput && innerWidth>700) firstInput.focus();
+  }
+
+  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
+    const kind=b.dataset.add, blank={spotlight:{cat:'Flower',name:'',brand:'',price:'',note:''},deal:{headline:'',item:'',fine:''},fact:{fact:''},note:{lines:['','','','','','']}};
+    const m={id:uid(), kind, on:true, until:'', color:KINDS[kind].color, f:blank[kind]};
+    state.messages.unshift(m); renderCards(); save(); openSheet(m.id);
+  });
+  $('secs').onchange=e=>{ state.settings.seconds=+e.target.value; save(); };
+  $('clock').onchange=e=>{ state.settings.clock=e.target.checked; save(); };
+  $('openTV').onclick=()=>window.open(location.pathname,'_blank');
+
+  store.listen(s=>{
+    if(state && Date.now()-lastLocal<2000) return;
+    state=s; state.settings=state.settings||{seconds:15,clock:true}; state.messages=state.messages||[];
+    $('secs').value=String(state.settings.seconds||15); $('clock').checked=!!state.settings.clock;
+    if(!editing) renderCards();
+    setStatus(USE_FB?'Live ✓':'', USE_FB?'ok':'');
+  });
 }
-})();
+
+if(new URLSearchParams(location.search).has('admin')) startAdmin(); else startTV();
 </script>
 </body>
 </html>
