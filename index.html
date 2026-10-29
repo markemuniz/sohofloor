@@ -344,13 +344,27 @@ function startTV(){
   };
   fit(); addEventListener('resize',fit);
   const board=makeBoard(document.getElementById('stage'));
-  let state=null, idx=-1, timer=null;
+  let state=null, idx=-1, timer=null, order=[], lastKey=null;
   const playlist=()=>{ const l=(state.messages||[]).filter(isLive); if(state.settings?.clock && l.length) l.push({clock:true}); return l; };
+  const keyOf=m=>m.clock?'clock':m.id;
+  // Mix up the pages: shuffle every time through, never repeating a page back to back
+  function reshuffle(list){
+    const a=list.slice();
+    if(state.settings?.shuffle!==false){
+      for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+      if(a.length>1 && keyOf(a[0])===lastKey) [a[0],a[1]]=[a[1],a[0]];
+    }
+    return a;
+  }
   function next(step=1){
     clearTimeout(timer); const list=playlist();
     if(!list.length){ board.show(layout("THE TRAVEL AGENCY\nSOHO").grid); return; }
-    idx=(idx+step+list.length)%list.length;
-    const m=list[idx];
+    const sig=list.map(keyOf).sort().join();
+    if(order.sig!==sig){ order=reshuffle(list); order.sig=sig; idx=-1; }
+    idx+=step;
+    if(idx>=order.length){ order=reshuffle(list); order.sig=sig; idx=0; }
+    if(idx<0) idx=order.length-1;
+    const m=order[idx]; lastKey=keyOf(m);
     const go=()=>{ const R=render(m); board.show(R.grid,false,R.photo); };
     if(m.f && m.f.img && !AR[m.f.img]) loadAR(m.f.img, go); else go();
     timer=setTimeout(()=>next(1), Math.max(5,+state.settings?.seconds||15)*1000);
@@ -392,6 +406,7 @@ function startAdmin(){
         <select id="secs">${[8,10,15,20,30,45,60].map(s=>`<option value="${s}">${s} seconds</option>`).join('')}</select>
       </label>
       <label class="switch"><input type="checkbox" id="clock"><i></i>Show the date and time</label>
+      <label class="switch"><input type="checkbox" id="shuffle"><i></i>Mix up the order</label>
       <button id="openTV">Open the TV board ↗</button>
     </div>
     ${USE_FB?'':'<div class="local">Not synced yet: changes save only on this device until the board is connected to its own Firebase project.</div>'}
@@ -498,12 +513,13 @@ function startAdmin(){
   });
   $('secs').onchange=e=>{ state.settings.seconds=+e.target.value; save(); };
   $('clock').onchange=e=>{ state.settings.clock=e.target.checked; save(); };
+  $('shuffle').onchange=e=>{ state.settings.shuffle=e.target.checked; save(); };
   $('openTV').onclick=()=>window.open(location.pathname,'_blank');
 
   store.listen(s=>{
     if(state && Date.now()-lastLocal<2000) return;
     state=s; state.settings=state.settings||{seconds:15,clock:true}; state.messages=state.messages||[];
-    $('secs').value=String(state.settings.seconds||15); $('clock').checked=!!state.settings.clock;
+    $('secs').value=String(state.settings.seconds||15); $('clock').checked=!!state.settings.clock; $('shuffle').checked=state.settings.shuffle!==false;
     if(!editing) renderCards();
     setStatus(USE_FB?'Live ✓':'', USE_FB?'ok':'');
   });
