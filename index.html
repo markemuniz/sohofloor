@@ -367,11 +367,12 @@ function cleanMsg(m){ return JSON.parse(JSON.stringify(normalizeMsg(m))); }
 
 /* Product spotlights: top in-stock seller per category at SoHo (Dutchie sales 6/1 to 10/29/2026),
    photos and descriptions from thetravelagency.co, prices from the SoHo inventory list. */
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 const IMG = 'https://leaflogixmedia.blob.core.windows.net/product-image/';
+const OLD_PREROLL_IMG = IMG + '5ec667a4-3c5f-4c6e-b34c-79525abd7a1f.jpg';   // 13,037px original, too big to use
 const SPOTLIGHTS = [
   {id:'spot-preroll', header:'TOP PRE-ROLL', accent:'O', order:1.5,
-   body:"RUBY FARMS\nDOOBIES\nBLUE DREAM\n2 X .5G - $14", image: IMG + '5ec667a4-3c5f-4c6e-b34c-79525abd7a1f.jpg',
+   body:"RUBY FARMS\nDOOBIES\nBLUE DREAM\n2PK $14\n7PK $38", image: IMG + '82c78753-d344-4c38-b238-31d3d8cccb87.jpg',
    caption:'Sweet berry flavor. Sativa-dominant hybrid.'},
   {id:'spot-flower', header:'TOP FLOWER', accent:'G', order:4.5,
    body:"RUBY FARMS\nMAUI WOWIE\nSATIVA 3.5G\n$42", image: IMG + '73f08238-efb6-40bf-8232-3724476476cf.jpg',
@@ -389,6 +390,11 @@ const SPOTLIGHTS = [
 function addMissingSpotlights(messages){
   SPOTLIGHTS.forEach(function(x){ if (!messages[x.id]) messages[x.id] = cleanMsg(x); });
   return messages;
+}
+function fixPreroll(cur){   // swap the oversized photo, only if nobody edited that screen's photo
+  if (!cur || cur.image !== OLD_PREROLL_IMG) return null;
+  const x = SPOTLIGHTS.filter(function(s){ return s.id === 'spot-preroll'; })[0];
+  return Object.assign({}, cur, {image: x.image, body: x.body});
 }
 
 function seedMessages(){
@@ -457,7 +463,11 @@ const Store = {
     if (!this.configured()){
       this.mode = 'local';
       this.data = normalizeData(cached && cached.messages ? cached : {messages: seedMessages(), settings: DEFAULT_SETTINGS, meta: {seeded: true, seedVersion: SEED_VERSION}});
-      if ((Number(this.data.meta.seedVersion) || 1) < SEED_VERSION){ addMissingSpotlights(this.data.messages); this.data.meta.seedVersion = SEED_VERSION; }
+      if ((Number(this.data.meta.seedVersion) || 1) < SEED_VERSION){
+        addMissingSpotlights(this.data.messages);
+        const fp = fixPreroll(this.data.messages['spot-preroll']); if (fp) this.data.messages['spot-preroll'] = normalizeMsg(fp);
+        this.data.meta.seedVersion = SEED_VERSION;
+      }
       this.cache();
       this.setStatus('local');
       this.flash = lsGet(LS_FLASH); this.now = lsGet(LS_NOW);
@@ -509,7 +519,11 @@ const Store = {
           self.ref.child('meta/seedVersion').transaction(function(cur){ return (Number(cur) || 1) >= SEED_VERSION ? undefined : SEED_VERSION; }, function(err2, committed2){
             if (err2 || !committed2) return;
             SPOTLIGHTS.forEach(function(x){
-              self.ref.child('messages/' + x.id).transaction(function(cur){ return cur ? undefined : cleanMsg(x); }, function(){}, false);
+              self.ref.child('messages/' + x.id).transaction(function(cur){
+                if (!cur) return cleanMsg(x);
+                if (x.id === 'spot-preroll'){ const fp = fixPreroll(cur); if (fp) return fp; }
+                return undefined;
+              }, function(){}, false);
             });
           }, false);
         }
@@ -611,14 +625,27 @@ function showKey(m){
   const res = layout(m || FALLBACK);
   return gridKey(res.grid) + '|' + (res.photo ? m.image + '|' + m.caption : '');
 }
-function loadPhoto(u){
+const photoCache = {};   // url -> {src, at}; failures are retried after 10 minutes
+function tryImage(src, maxPixels){
   return new Promise(function(res){
-    const src = photoUrl(u);
-    if (!src) return res(null);
     const im = new Image();
-    im.onload = function(){ res(src); }; im.onerror = function(){ res(null); };
+    im.onload = function(){ res(maxPixels && im.naturalWidth * im.naturalHeight > maxPixels ? null : src); };
+    im.onerror = function(){ res(null); };
     im.src = src;
   });
+}
+function loadPhoto(u, timeoutMs){
+  u = String(u || '').trim();
+  if (!u) return Promise.resolve(null);
+  const c = photoCache[u];
+  if (c && (c.src || Date.now() - c.at < 10 * 60 * 1000)) return Promise.resolve(c.src);
+  const resized = photoUrl(u);
+  const attempt = tryImage(resized).then(function(src){
+    // resizer unavailable: use the original, but never one so large it could stall a TV
+    return src || (resized !== u ? tryImage(u, 24000000) : null);
+  }).then(function(src){ photoCache[u] = {src: src, at: Date.now()}; return src; });
+  if (!timeoutMs) return attempt;
+  return Promise.race([attempt, new Promise(function(r){ setTimeout(function(){ r(null); }, timeoutMs); })]);
 }
 
 /* =====================================================================
@@ -831,15 +858,23 @@ const Player = {
     opts = opts || {};
     clearTimeout(this.dwell);
     Board.hidePhoto();
-    const res = layout(m || FALLBACK);
     this.currentId = m ? m.id : null;
     this.shownKey = showKey(m);
     Store.setNow(this.currentId);
     const token = {}; this.token = token;
-    const photoReady = (m && res.photo) ? loadPhoto(m.image) : Promise.resolve(null);
+    const wantsPhoto = !!(m && String(m.image || '').trim());
+    (wantsPhoto ? loadPhoto(m.image, 6000) : Promise.resolve(null)).then(function(src){
+      if (self.token !== token) return;
+      // no photo available: lay the text out across the full board instead of leaving a gap
+      const res = layout(src ? m : (m ? Object.assign({}, m, {image: ''}) : FALLBACK));
+      self.flipTo(res, m, src, token, opts);
+    });
+  },
+  flipTo: function(res, m, src, token, opts){
+    const self = this;
     Board.setGrid(res.grid, function(){
       if (self.token !== token) return;
-      photoReady.then(function(src){ if (self.token === token && src) Board.showPhoto(src, m.caption, res.photo); });
+      if (src && res.photo) Board.showPhoto(src, m.caption, res.photo);
       if (opts.held) return;
       self.dwell = setTimeout(function(){
         if (self.token !== token) return;
@@ -935,7 +970,7 @@ function miniHTML(res, m){
   }
   if (res.photo && m && m.image){
     const P = res.photo;
-    h += '<div class="mph" style="grid-column:' + (P.c0 + 1) + '/' + (P.c1 + 2) + ';grid-row:' + (P.r0 + 1) + '/' + (P.r1 + 2) + '"><img src="' + esc(photoUrl(m.image, 320)) + '" alt="" loading="lazy"></div>';
+    h += '<div class="mph" style="grid-column:' + (P.c0 + 1) + '/' + (P.c1 + 2) + ';grid-row:' + (P.r0 + 1) + '/' + (P.r1 + 2) + '"><img src="' + esc(photoUrl(m.image, 320)) + '" data-orig="' + esc(m.image) + '" onerror="if(this.dataset.orig&amp;&amp;this.src!==this.dataset.orig)this.src=this.dataset.orig" alt="" loading="lazy"></div>';
   }
   return h + '</div>';
 }
