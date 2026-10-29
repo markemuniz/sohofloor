@@ -32,6 +32,27 @@
   .flap.c-R{background:var(--R)} .flap.c-O{background:var(--O)} .flap.c-Y{background:var(--Y)} .flap.c-G{background:var(--G)}
   .flap.c-B{background:var(--B)} .flap.c-V{background:var(--V)} .flap.c-W{background:var(--W)} .flap.c-K{background:var(--K)}
   .flap.ph{background-color:#fff;background-repeat:no-repeat}
+  /* ---------- Departure-board styling (TV) ---------- */
+  body.tv .frame{background:linear-gradient(180deg,#1b1b1d,#0c0c0d);border-radius:calc(var(--cw)*.25);
+    padding:calc(var(--cw)*.45) calc(var(--cw)*.55) calc(var(--cw)*.35);
+    box-shadow:0 0 0 calc(var(--cw)*.12) #2a2a2d, 0 0 0 calc(var(--cw)*.2) #070708, 0 30px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06)}
+  body.tv .cell{background:linear-gradient(180deg,#242427 0%,#1c1c1e 49.5%,#141416 50.5%,#19191b 100%);border-radius:calc(var(--cw)*.06);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 1px 2px rgba(0,0,0,.6)}
+  body.tv .cell::before{content:"";position:absolute;top:calc(50% - var(--cw)*.07);width:calc(var(--cw)*.07);height:calc(var(--cw)*.14);background:#08080a;border-radius:1px;left:0;z-index:3;box-shadow:calc(var(--cw)*.93) 0 0 #08080a}
+  body.tv .flap{color:#f2efe6;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+  .hdr,.ftr{width:0;min-width:100%;overflow:hidden;gap:calc(var(--cw)*1.2);display:flex;align-items:center;justify-content:space-between;font-family:"Barlow Condensed",sans-serif;font-weight:700;text-transform:uppercase;white-space:nowrap}
+  .hdr{color:#f5c518;font-size:calc(var(--cw)*1.05);letter-spacing:.22em;padding:0 calc(var(--cw)*.1) calc(var(--cw)*.4);margin-bottom:calc(var(--cw)*.45);border-bottom:calc(var(--cw)*.06) solid #f5c518}
+  .hdr .dep{display:flex;align-items:center;gap:calc(var(--cw)*.5)}
+  .hdr svg{width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3);fill:#f5c518;transform:rotate(45deg)}
+  .hdr .mid{color:#f2efe6;letter-spacing:.25em;font-size:.8em}
+  .hdr .mid .re{display:inline-block;transform:scaleX(-1)}
+  .hdr .clk{font-variant-numeric:tabular-nums;color:#f2efe6;background:#000;padding:calc(var(--cw)*.1) calc(var(--cw)*.4);border-radius:calc(var(--cw)*.1);letter-spacing:.12em}
+  .ftr{color:#8d8a83;font-size:calc(var(--cw)*.62);letter-spacing:.2em;margin-top:calc(var(--cw)*.4);padding-top:calc(var(--cw)*.3);border-top:1px solid #2c2c2f}
+  .hdr>span,.ftr>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .hdr>span.clk,.hdr>span.dep{flex:none}
+  .ftr b{color:#f5c518;font-weight:700;margin-left:calc(var(--cw)*.35)}
+  .ftr .blink{display:inline-block;width:calc(var(--cw)*.35);height:calc(var(--cw)*.35);border-radius:50%;background:#2fa35b;margin-right:calc(var(--cw)*.35);animation:blink 1.4s infinite}
+  @keyframes blink{50%{opacity:.25}}
   .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
   body.tv:hover .hint{opacity:1}
 
@@ -251,7 +272,7 @@ function spotGrid(m){
   }
   const T=s=>tokenize(normalize(s||''));
   const hd=(f.head||((f.cat||'')+' PICK')).trim();
-  const head=T(c?`{${c}} ${hd} {${c}}`:hd);
+  let head=T(c?`{${c}} ${hd} {${c}}`:hd); if(head.length>W) head=T(hd);
   const name=wrap(T(f.name),W), brand=f.brand?wrap(T(f.brand),W):[], size=f.size?wrap(T(f.size),W):[];
   const price=f.price?T('$'+String(f.price).replace(/^\$/,'')):null;
   let desc=f.desc?wrap(T(f.desc),W):[];
@@ -351,11 +372,26 @@ function startTV(){
   document.body.className='tv';
   document.getElementById('app').innerHTML='<div class="stage" id="stage"></div><div class="hint">Click for fullscreen · arrow keys to skip</div>';
   const fit=()=>{
-    const byW=innerWidth*.96/(COLS*1.12+1.1), byH=innerHeight*.94/(ROWS*1.44-.12+1.1);
+    const byW=innerWidth*.96/(COLS*1.12+1.3), byH=innerHeight*.94/(ROWS*1.44-.12+1.1+3.3);
     document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px');
   };
   fit(); addEventListener('resize',fit);
   const board=makeBoard(document.getElementById('stage'));
+  // departure-board header + footer
+  const frame=document.querySelector('#stage .frame');
+  const hdr=document.createElement('div'); hdr.className='hdr';
+  hdr.innerHTML='<span class="dep"><svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>Departures</span>'+
+    '<span class="mid">The Trav<span class="re">e</span>l Ag<span class="re">e</span>ncy · SoHo</span><span class="clk" id="clk"></span>';
+  frame.insertBefore(hdr, frame.firstChild);
+  const ftr=document.createElement('div'); ftr.className='ftr';
+  ftr.innerHTML='<span><i class="blink"></i>Now boarding<b id="nowB"></b></span><span>Next<b id="nextB"></b></span><span>All passengers 21+<b>Valid ID required</b></span>';
+  frame.appendChild(ftr);
+  const tick=()=>{ document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); };
+  tick(); setInterval(tick,10000);
+  const label=m=>{ if(!m) return ''; if(m.clock) return 'Local time'; const f=m.f||{};
+    if(m.kind==='spotlight') return (f.head||((f.cat||'')+' pick'))+(f.name?' · '+f.name:'');
+    if(m.kind==='deal') return 'Deal'+(f.headline?' · '+f.headline:''); if(m.kind==='fact') return 'Fun fact';
+    return ((f.lines||[]).find(l=>l&&l.trim())||'Message'); };
   let state=null, idx=-1, timer=null, order=[], lastKey=null;
   const playlist=()=>{ const l=(state.messages||[]).filter(isLive); if(state.settings?.clock && l.length) l.push({clock:true}); return l; };
   const keyOf=m=>m.clock?'clock':m.id;
@@ -377,6 +413,8 @@ function startTV(){
     if(idx>=order.length){ order=reshuffle(list); order.sig=sig; idx=0; }
     if(idx<0) idx=order.length-1;
     const m=order[idx]; lastKey=keyOf(m);
+    document.getElementById('nowB').textContent=label(m);
+    document.getElementById('nextB').textContent=label(order[idx+1]||order[0]);
     const go=()=>{ const R=render(m); board.show(R.grid,false,R.photo); };
     if(m.f && m.f.img && !AR[m.f.img]) loadAR(m.f.img, go); else go();
     timer=setTimeout(()=>next(1), Math.max(5,+state.settings?.seconds||15)*1000);
