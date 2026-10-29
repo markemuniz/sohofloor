@@ -31,6 +31,20 @@
   @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(80deg);filter:brightness(.6)}100%{transform:rotateX(0)}}
   .flap.c-R{background:var(--R)} .flap.c-O{background:var(--O)} .flap.c-Y{background:var(--Y)} .flap.c-G{background:var(--G)}
   .flap.c-B{background:var(--B)} .flap.c-V{background:var(--V)} .flap.c-W{background:var(--W)} .flap.c-K{background:var(--K)}
+  .stage{gap:3vw}
+  .panel{display:none;width:30vw;max-height:90vh}
+  .stage.split .panel{display:block;animation:slidein .5s ease-out}
+  @keyframes slidein{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+  .pcard{background:#fbf6ec;color:#1d1b18;border-radius:1.6vw;padding:1.8vw;display:flex;flex-direction:column;gap:.7vh;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .pimg{background:#fff;border-radius:1vw;aspect-ratio:1/1;max-height:38vh;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:1vh}
+  .pimg img{max-width:92%;max-height:92%;object-fit:contain}
+  .ptag{align-self:flex-start;color:#fff;font-family:"Barlow Condensed",sans-serif;font-weight:700;letter-spacing:.12em;font-size:1.25vw;padding:.3vw .9vw;border-radius:99px;text-transform:uppercase}
+  .pbrand{font-size:1.1vw;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#7a6f63;margin-top:.6vh}
+  .pname{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:2.6vw;line-height:1.02;text-transform:uppercase}
+  .pname .re{display:inline-block;transform:scaleX(-1)}
+  .psize{font-size:1vw;color:#7a6f63}
+  .pdesc{font-size:1.05vw;line-height:1.45;margin-top:.6vh;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+  .pprice{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:3.2vw;color:#e0401c;margin-top:.4vh}
   .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
   body.tv:hover .hint{opacity:1}
 
@@ -134,7 +148,7 @@ const KINDS = {
   fact:     {label:'Fun Fact', help:'Something about TTA', color:'V'},
   note:     {label:'Message', help:'Anything else, line by line', color:'G'}
 };
-const CATS = ['Flower','Pre-Roll','Vape','Edible','Concentrate','Beverage','Tincture','Topical','Accessory',''];
+const CATS = ['Flower','Pre-Roll','Vape','Edible','Concentrate','Beverage','Tincture','Topical','CBD','Accessory',''];
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function esc(s){ return String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -146,10 +160,18 @@ const DEFAULT_STATE = {
   settings:{ seconds:15, clock:true },
   messages:[
     {id:uid(), kind:'note', on:true, until:'', color:'G', f:{lines:['WELCOME TO','THE TRAVEL AGENCY','SOHO','','','']}},
-    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{cat:'Flower', name:'Product name', brand:'Brand', price:'', note:'Ask your budtender'}},
-    {id:uid(), kind:'deal', on:true, until:'', color:'R', f:{headline:'20% off', item:"What's on sale", fine:''}},
-    {id:uid(), kind:'fact', on:true, until:'', color:'V', f:{fact:'Add a fun fact about The Travel Agency here'}},
-    {id:uid(), kind:'note', on:true, until:'', color:'Y', f:{lines:['MUST BE 21+ WITH','VALID ID TO PURCHASE','','','','']}}
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'G', f:{"cat": "Flower", "head": "TOP FLOWER", "name": "Jack Herer", "brand": "Ruby Farms", "price": "42", "note": "", "size": "3.5g \u00b7 Sativa", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/10a6eed0-b0a4-4c8d-b897-9f2f245a52b9.jpg", "desc": "Legendary sativa named after the cannabis activist. Uplifting, clear-headed and creative, with a spicy, piney aroma."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'Y', f:{"cat": "Pre-Roll", "head": "TOP PRE-ROLL", "name": "Super Lemon Haze 7pk", "brand": "Ruby Farms Doobies", "price": "38", "note": "", "size": "7 pre-rolls \u00b7 3.5g \u00b7 Sativa-Hybrid", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/5d7f3e4a-a3a7-4be3-8f49-6c743afb9023.jpg", "desc": "Hand-rolled Ruby Farms flower in natural, unbleached hemp wraps, packed in a sleek copper tin. Zesty, citrusy and a little sweet."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{"cat": "Vape", "head": "TOP VAPE", "name": "Guava Belts", "brand": "Bloom Classic", "price": "45", "note": "", "size": "1g all-in-one \u00b7 Hybrid", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/a5f7ea25-5e35-4dce-ad31-dbde9a198a0b.jpg", "desc": "Juicy tropical sweetness with hints of berry. Creative and energetic while keeping the vibe light and social."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "Edible", "head": "TOP EDIBLE", "name": "Blackberry Dream", "brand": "Camino Sours", "price": "30", "note": "", "size": "10 gummies \u00b7 10mg each \u00b7 1:1:1", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/ecb403ab-d573-48d7-be8f-b61b58ec7cb5.jpg", "desc": "THC and CBN with chamomile and lavender extracts in a subtly sour blackberry gummy. Take one and call it a night."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'O', f:{"cat": "Concentrate", "head": "TOP CONCENTRATE", "name": "Charas Hash", "brand": "Stone Road", "price": "36", "note": "", "size": "1g \u00b7 Sativa blend", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/015f9587-1c0f-4cdb-aa9f-83cbfbaeb57a.jpg", "desc": "Solventless hash made from only flower, water and ice. Earthy and piney with soft citrus, for energy and focus without the fog."}},
+    {id:uid(), kind:'note', on:true, until:'', color:'Y', f:{lines:['MUST BE 21+ WITH','VALID ID TO PURCHASE','','','','']}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'B', f:{"cat": "Beverage", "head": "TOP DRINK", "name": "Squeeze Lemon Lime", "brand": "Select", "price": "30", "note": "", "size": "100mg drops", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/a84d225b-fdbd-425e-938c-801b0baa37ff.jpg", "desc": "Water-soluble cannabis drops that mix right in. Add to anything from sports drinks to smoothies to sweet tea."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'G', f:{"cat": "Tincture", "head": "TOP TINCTURE", "name": "Max Strength", "brand": "Head & Heal", "price": "116", "note": "", "size": "Tincture", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/f4150106-cc33-4599-91e6-0b4fd38b11c4.jpg", "desc": "The strongest concentration of THC allowed in an edible product in New York State."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'O', f:{"cat": "Topical", "head": "TOP TOPICAL", "name": "Releaf Balm 3:1 50ml", "brand": "Papa & Barkley", "price": "90", "note": "", "size": "50ml \u00b7 3:1 CBD:THC", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/dd5aab6b-75a5-43a2-b9a7-4bf1186996e0.jpg", "desc": "A rich, CBD-forward 3:1 balm from Papa & Barkley."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "CBD", "head": "TOP CBD", "name": "Pleasure Oil", "brand": "Her Highness", "price": "60", "note": "", "size": "Hemp-derived CBD", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/8deafc7c-76d6-4015-a76f-58c4eee1fcb4.jpg", "desc": "Ultra-premium, hemp-derived CBD oil made with a professional herbalist. Not a lube: ask your budtender."}},
+    {id:uid(), kind:'spotlight', on:true, until:'', color:'R', f:{"cat": "Accessory", "head": "TOP ACCESSORY", "name": "TTA Lighter", "brand": "The Travel Agency", "price": "3", "note": "", "size": "Bic lighter", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/7b84f406-9c47-4016-85cc-63e709445fab.jpg", "desc": "This standard size Bic is anything but standard. Carry it and you'll know you've arrived."}},
+    {id:uid(), kind:'fact', on:false, until:'', color:'V', f:{fact:'Add a fun fact about The Travel Agency here'}}
   ]
 };
 
@@ -159,8 +181,8 @@ function compose(m){
   const head=t=> c ? `{${c}} ${t} {${c}}` : t;
   let L=[];
   if(m.kind==='spotlight'){
-    L=[head(((f.cat||'')+' PICK').trim()), f.name, f.brand,
-       [f.price ? '$'+String(f.price).replace(/^\$/,'') : '', ''].join(''), f.note];
+    L=[head((f.head||((f.cat||'')+' PICK')).trim()), f.name, f.brand,
+       f.price ? '$'+String(f.price).replace(/^\$/,'') : '', f.note];
   } else if(m.kind==='deal'){
     L=[c?`{${c}}{${c}} DEAL {${c}}{${c}}`:'DEAL', f.headline, f.item, f.fine, m.until?'ENDS '+niceDate(m.until):''];
   } else if(m.kind==='fact'){
@@ -249,7 +271,7 @@ function makeBoard(container){
 
 /* ---------------- Storage ---------------- */
 const USE_FB = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('PASTE') && window.firebase;
-const LS_KEY='sohofloor_v2';
+const LS_KEY='sohofloor_v3';
 let docRef=null;
 const store={
   listen(cb){
@@ -278,21 +300,55 @@ function clockText(){
 }
 function startTV(){
   document.body.className='tv';
-  document.getElementById('app').innerHTML='<div class="stage" id="stage"></div><div class="hint">Click for fullscreen · arrow keys to skip</div>';
-  const fit=()=>{ const byW=innerWidth*.94/(COLS*1.12+1.1), byH=innerHeight*.9/(ROWS*1.32+(ROWS-1)*.12+1.1);
-    document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px'); };
+  document.getElementById('app').innerHTML=`<div class="stage" id="stage"><div id="boardHost"></div>
+    <div class="panel" id="panel"><div class="pcard">
+      <div class="pimg"><img id="pImg" alt=""></div>
+      <div class="ptag" id="pTag"></div>
+      <div class="pbrand" id="pBrand"></div>
+      <div class="pname" id="pName"></div>
+      <div class="psize" id="pSize"></div>
+      <div class="pdesc" id="pDesc"></div>
+      <div class="pprice" id="pPrice"></div>
+    </div></div></div><div class="hint">Click for fullscreen · arrow keys to skip</div>`;
+  const stage=document.getElementById('stage'), panel=document.getElementById('panel');
+  let withPanel=false;
+  const fit=()=>{
+    const w=innerWidth*(withPanel?.60:.94);
+    const byW=w/(COLS*1.12+1.1), byH=innerHeight*.9/(ROWS*1.32+(ROWS-1)*.12+1.1);
+    document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px');
+  };
   fit(); addEventListener('resize',fit);
-  const board=makeBoard(document.getElementById('stage'));
+  const board=makeBoard(document.getElementById('boardHost'));
   let state=null, idx=-1, timer=null;
-  const playlist=()=>{ const l=(state.messages||[]).filter(isLive).map(m=>compose(m)); if(state.settings?.clock && l.length) l.push('__clock'); return l; };
+  const playlist=()=>{ const l=(state.messages||[]).filter(isLive); if(state.settings?.clock && l.length) l.push({clock:true}); return l; };
+  function showPanel(m){
+    const f=m && m.kind==='spotlight' ? m.f||{} : null;
+    const on=!!(f && f.img);
+    if(on){
+      document.getElementById('pImg').src=f.img;
+      document.getElementById('pTag').textContent=(f.head||((f.cat||'')+' pick')).trim();
+      document.getElementById('pTag').style.background='var(--'+(m.color||'R')+')';
+      document.getElementById('pBrand').textContent=f.brand||'';
+      document.getElementById('pName').innerHTML=esc(f.name||'').replace(/Travel(\s+)Agency/gi,'Trav<span class="re">e</span>l$1Ag<span class="re">e</span>ncy');
+      document.getElementById('pSize').textContent=f.size||'';
+      document.getElementById('pDesc').textContent=f.desc||'';
+      document.getElementById('pPrice').textContent=f.price?'$'+String(f.price).replace(/^\$/,''):'';
+    }
+    if(on!==withPanel){ withPanel=on; stage.classList.toggle('split',on); fit(); }
+  }
   function next(step=1){
     clearTimeout(timer); const list=playlist();
-    if(!list.length){ board.show(layout("THE TRAVEL AGENCY\nSOHO").grid); return; }
+    if(!list.length){ showPanel(null); board.show(layout("THE TRAVEL AGENCY\nSOHO").grid); return; }
     idx=(idx+step+list.length)%list.length;
-    board.show(layout(list[idx]==='__clock'?clockText():list[idx]).grid);
+    const m=list[idx];
+    showPanel(m.clock?null:m);
+    board.show(layout(m.clock?clockText():compose(m)).grid);
     timer=setTimeout(()=>next(1), Math.max(5,+state.settings?.seconds||15)*1000);
   }
-  store.listen(s=>{ const first=!state; state=s; if(first) next(1); });
+  // preload product photos so they pop in instantly
+  store.listen(s=>{ const first=!state; state=s;
+    (s.messages||[]).forEach(m=>{ if(m.f&&m.f.img){ const i=new Image(); i.src=m.f.img; } });
+    if(first) next(1); });
   document.addEventListener('click',()=>{ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); });
   document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight') next(1); if(e.key==='ArrowLeft') next(-1); });
   setTimeout(()=>location.reload(), 6*60*60*1000);
@@ -374,7 +430,12 @@ function startAdmin(){
       <label class="field"><span>Category</span><select data-k="cat">${CATS.map(c=>`<option value="${c}" ${f.cat===c?'selected':''}>${c||'(none)'}</option>`).join('')}</select></label>
       ${inp('name','Product name','e.g. Blue Dream 3.5g')}
       <div class="two">${inp('brand','Brand','e.g. Brand name','(optional)')}${inp('price','Price','e.g. 45','(optional)')}</div>
-      ${inp('note','Extra line','e.g. Ask your budtender','(optional)')}`;
+      ${inp('head','Heading','e.g. Top flower','(optional)')}
+      ${inp('note','Extra line on the board','e.g. Ask your budtender','(optional)')}
+      ${inp('size','Size / type','e.g. 3.5g · Sativa','(photo card, optional)')}
+      ${inp('img','Photo link','Paste the image link from thetravelagency.co','(optional)')}
+      <label class="field"><span>Description <em>(photo card, optional)</em></span><textarea data-k="desc" rows="3" placeholder="A sentence or two about the product">${esc(f.desc)}</textarea></label>
+      ${f.img?`<img src="${esc(f.img)}" alt="" style="max-width:120px;border-radius:10px;background:#fff;margin-top:10px">`:''}`;
     if(m.kind==='deal') return `
       ${inp('headline','Headline','e.g. 20% off')}
       ${inp('item',"What's on sale",'e.g. All pre-rolls')}
