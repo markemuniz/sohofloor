@@ -384,10 +384,16 @@ function startTV(){
     '<span class="mid">The Trav<span class="re">e</span>l Ag<span class="re">e</span>ncy · SoHo</span><span class="clk" id="clk"></span>';
   frame.insertBefore(hdr, frame.firstChild);
   const ftr=document.createElement('div'); ftr.className='ftr';
-  ftr.innerHTML='<span><i class="blink"></i>Now boarding<b id="nowB"></b></span><span>Next<b id="nextB"></b></span><span>21+<b>Valid ID required</b></span>';
+  ftr.innerHTML='<span><i class="blink"></i>Now boarding<b id="nowB"></b></span><span>Next<b id="nextB"></b></span><span>SoHo weather<b id="wx">--</b></span>';
   frame.appendChild(ftr);
   const tick=()=>{ document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); };
   tick(); setInterval(tick,10000);
+  // current SoHo weather (Open-Meteo, no key needed), refreshed every 15 minutes
+  const WX={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Cloudy',45:'Fog',48:'Fog',51:'Drizzle',53:'Drizzle',55:'Drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+    61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Snow showers',95:'Thunderstorms',96:'Thunderstorms',99:'Thunderstorms'};
+  const weather=()=>fetch('https://api.open-meteo.com/v1/forecast?latitude=40.7233&longitude=-74.0030&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=America%2FNew_York')
+    .then(r=>r.json()).then(d=>{ const c=d.current; document.getElementById('wx').textContent=Math.round(c.temperature_2m)+'°F · '+(WX[c.weather_code]||''); }).catch(()=>{});
+  weather(); setInterval(weather,15*60*1000);
   const label=m=>{ if(!m) return ''; if(m.clock) return 'Local time'; const f=m.f||{};
     if(m.kind==='spotlight') return (f.head||((f.cat||'')+' pick'));
     if(m.kind==='deal') return 'Deal'; if(m.kind==='fact') return 'Fun fact';
