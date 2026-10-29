@@ -384,13 +384,13 @@ function startTV(){
     '<span class="mid">The Trav<span class="re">e</span>l Ag<span class="re">e</span>ncy · SoHo</span><span class="clk" id="clk"></span>';
   frame.insertBefore(hdr, frame.firstChild);
   const ftr=document.createElement('div'); ftr.className='ftr';
-  ftr.innerHTML='<span><i class="blink"></i>Now boarding<b id="nowB"></b></span><span>Next<b id="nextB"></b></span><span>All passengers 21+<b>Valid ID required</b></span>';
+  ftr.innerHTML='<span><i class="blink"></i>Now boarding<b id="nowB"></b></span><span>Next<b id="nextB"></b></span><span>21+<b>Valid ID required</b></span>';
   frame.appendChild(ftr);
   const tick=()=>{ document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); };
   tick(); setInterval(tick,10000);
   const label=m=>{ if(!m) return ''; if(m.clock) return 'Local time'; const f=m.f||{};
-    if(m.kind==='spotlight') return (f.head||((f.cat||'')+' pick'))+(f.name?' · '+f.name:'');
-    if(m.kind==='deal') return 'Deal'+(f.headline?' · '+f.headline:''); if(m.kind==='fact') return 'Fun fact';
+    if(m.kind==='spotlight') return (f.head||((f.cat||'')+' pick'));
+    if(m.kind==='deal') return 'Deal'; if(m.kind==='fact') return 'Fun fact';
     return ((f.lines||[]).find(l=>l&&l.trim())||'Message'); };
   let state=null, idx=-1, timer=null, order=[], lastKey=null;
   const playlist=()=>{ const l=(state.messages||[]).filter(isLive); if(state.settings?.clock && l.length) l.push({clock:true}); return l; };
