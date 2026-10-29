@@ -41,16 +41,16 @@
   body.tv .cell::before{content:"";position:absolute;top:calc(50% - var(--cw)*.07);width:calc(var(--cw)*.07);height:calc(var(--cw)*.14);background:#08080a;border-radius:1px;left:0;z-index:3;box-shadow:calc(var(--cw)*.93) 0 0 #08080a}
   body.tv .flap{color:#f2efe6;text-shadow:0 1px 0 rgba(0,0,0,.6)}
   .hdr,.ftr{width:0;min-width:100%;overflow:hidden;gap:calc(var(--cw)*1.2);display:flex;align-items:center;justify-content:space-between;font-family:"Barlow Condensed",sans-serif;font-weight:700;text-transform:uppercase;white-space:nowrap}
-  .hdr{color:#f5c518;font-size:calc(var(--cw)*1.05);letter-spacing:.22em;padding:0 calc(var(--cw)*.1) calc(var(--cw)*.4);margin-bottom:calc(var(--cw)*.45);border-bottom:calc(var(--cw)*.06) solid #f5c518}
+  .hdr{color:#7cc8f5;font-size:calc(var(--cw)*1.05);letter-spacing:.22em;padding:0 calc(var(--cw)*.1) calc(var(--cw)*.4);margin-bottom:calc(var(--cw)*.45);border-bottom:calc(var(--cw)*.06) solid #7cc8f5}
   .hdr .dep{display:flex;align-items:center;gap:calc(var(--cw)*.5)}
-  .hdr svg{width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3);fill:#f5c518;transform:rotate(45deg)}
+  .hdr svg{width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3);fill:#7cc8f5;transform:rotate(45deg)}
   .hdr .mid{color:#f2efe6;letter-spacing:.25em;font-size:.8em}
   .hdr .mid .re{display:inline-block;transform:scaleX(-1)}
   .hdr .clk{font-variant-numeric:tabular-nums;color:#f2efe6;background:#000;padding:calc(var(--cw)*.1) calc(var(--cw)*.4);border-radius:calc(var(--cw)*.1);letter-spacing:.12em}
   .ftr{color:#8d8a83;font-size:calc(var(--cw)*.62);letter-spacing:.2em;margin-top:calc(var(--cw)*.4);padding-top:calc(var(--cw)*.3);border-top:1px solid #2c2c2f}
   .hdr>span,.ftr>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
   .hdr>span.clk,.hdr>span.dep{flex:none}
-  .ftr b{color:#f5c518;font-weight:700;margin-left:calc(var(--cw)*.35)}
+  .ftr b{color:#7cc8f5;font-weight:700;margin-left:calc(var(--cw)*.35)}
   .ftr .blink{display:inline-block;width:calc(var(--cw)*.35);height:calc(var(--cw)*.35);border-radius:50%;background:#2fa35b;margin-right:calc(var(--cw)*.35);animation:blink 1.4s infinite}
   @keyframes blink{50%{opacity:.25}}
   .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
@@ -165,6 +165,27 @@ function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.get
 function isLive(m){ return m.on && (!m.until || todayStr() <= m.until); }
 function niceDate(s){ if(!s) return ''; const [y,mo,d]=s.split('-'); return (+mo)+'/'+(+d); }
 
+const DEFAULT_FACTS = [
+  {color:'B', fact:"Our first store opened in Union Square in February 2023, one of the very first legal dispensaries in New York State."},
+  {color:'G', fact:"Our Union Square store lives in an old Chase bank building at Broadway and 13th Street."},
+  {color:'O', fact:"Every TTA store has its own travel theme. Union Square is a JFK airport terminal and Downtown Brooklyn is an underground train station."},
+  {color:'R', fact:"Our Fifth Avenue store is inspired by a grand train station, with a chrome palm tree out front."},
+  {color:'V', fact:"TTA SoHo is our trip to outer space: a parallel universe with chrome-wrapped columns."},
+  {color:'B', fact:"TTA SoHo opened its doors at 598 Broadway in May 2025."},
+  {color:'G', fact:"Look up! The kinetic, data-driven art installation here is by artist Andrew Zolty of Breakfast Studio."},
+  {color:'O', fact:"Our bong gallery features functional art by Serena Confalonieri of Milan and Mexican sculptor Juan Manuel Carmona."},
+  {color:'V', fact:"Every TTA store is designed with New York architecture firm Leong Leong."},
+  {color:'R', fact:"TTA was the first cannabis company to ever sponsor the New York Film Festival."},
+  {color:'B', fact:"TTA proudly supports The Doe Fund, helping New Yorkers rebuild with housing and job training."},
+  {color:'G', fact:"Why The Travel Agency? Cannabis can take you places. Our name is about the journey: purposeful, mindful and positive."}
+];
+// Adds the TTA fun facts to boards that were saved before they existed (runs once)
+function addFacts(st){
+  if(!st || st.factsV1) return st;
+  st.messages=(st.messages||[]).filter(m=>!(m.kind==='fact' && /^Add a fun fact/.test((m.f||{}).fact||'')));
+  DEFAULT_FACTS.forEach(x=>st.messages.push({id:uid(), kind:'fact', on:true, until:'', color:x.color, f:{fact:x.fact}}));
+  st.factsV1=true; return st;
+}
 const DEFAULT_STATE = {
   settings:{ seconds:15, clock:true },
   messages:[
@@ -180,8 +201,8 @@ const DEFAULT_STATE = {
     {id:uid(), kind:'spotlight', on:true, until:'', color:'O', f:{"cat": "Topical", "head": "TOP TOPICAL", "name": "Releaf Balm 3:1 50ml", "brand": "Papa & Barkley", "price": "90", "note": "", "size": "50ml \u00b7 3:1 CBD:THC", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/dd5aab6b-75a5-43a2-b9a7-4bf1186996e0.jpg", "desc": "A rich, CBD-forward 3:1 balm from Papa & Barkley."}},
     {id:uid(), kind:'spotlight', on:true, until:'', color:'V', f:{"cat": "CBD", "head": "TOP CBD", "name": "Pleasure Oil", "brand": "Her Highness", "price": "60", "note": "", "size": "Hemp-derived CBD", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/8deafc7c-76d6-4015-a76f-58c4eee1fcb4.jpg", "desc": "Ultra-premium hemp-derived CBD oil made with a professional herbalist."}},
     {id:uid(), kind:'spotlight', on:true, until:'', color:'R', f:{"cat": "Accessory", "head": "TOP ACCESSORY", "name": "TTA Lighter", "brand": "The Travel Agency", "price": "3", "note": "", "size": "Bic lighter", "img": "https://leaflogixmedia.blob.core.windows.net/product-image/7b84f406-9c47-4016-85cc-63e709445fab.jpg", "desc": "This standard size Bic is anything but standard. You\u0027ll know you\u0027ve arrived."}},
-    {id:uid(), kind:'fact', on:false, until:'', color:'V', f:{fact:'Add a fun fact about The Travel Agency here'}}
-  ]
+  ].concat(DEFAULT_FACTS.map(x=>({id:uid(), kind:'fact', on:true, until:'', color:x.color, f:{fact:x.fact}}))),
+  factsV1:true
 };
 
 /* ---------------- Turn a message into board text ---------------- */
@@ -348,10 +369,10 @@ const store={
     if(USE_FB){
       firebase.initializeApp(FIREBASE_CONFIG);
       docRef=firebase.firestore().collection('floorboard').doc('main');
-      docRef.onSnapshot(s=>{ if(!s.exists){ docRef.set(DEFAULT_STATE); cb(structuredClone(DEFAULT_STATE)); } else cb(s.data()); },
+      docRef.onSnapshot(s=>{ if(!s.exists){ docRef.set(DEFAULT_STATE); cb(structuredClone(DEFAULT_STATE)); } else { const d=s.data(); if(!d.factsV1){ docRef.set(addFacts(d)); return; } cb(d); } },
         err=>{ console.error(err); setStatus('Connection problem','warn'); });
     } else {
-      const read=()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || structuredClone(DEFAULT_STATE); }catch(e){ return structuredClone(DEFAULT_STATE); } };
+      const read=()=>{ try{ const st=JSON.parse(localStorage.getItem(LS_KEY)); if(st && !st.factsV1){ addFacts(st); try{ localStorage.setItem(LS_KEY, JSON.stringify(st)); }catch(e){} } return st || structuredClone(DEFAULT_STATE); }catch(e){ return structuredClone(DEFAULT_STATE); } };
       cb(read()); addEventListener('storage',e=>{ if(e.key===LS_KEY) cb(read()); });
     }
   },
