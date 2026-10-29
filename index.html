@@ -127,7 +127,8 @@ const FIREBASE_CONFIG = {
 const COLS = 30, ROWS = 12;
 const COLORS = ['R','O','Y','G','B','V','W'];
 const CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$()-+&=;:'\"%,./?°".split('');
-const FLAPS = CHARS.concat(['R','O','Y','G','B','V','W','K'].map(c => '{'+c+'}'), ['{E}','{I}']);
+const FLAPS = CHARS.concat(['R','O','Y','G','B','V','W','K'].map(c => '{'+c+'}'), ['{E}','{L}','{I}']);
+const LEAF_SVG='<svg viewBox="4 10 92 88" width="96%" height="96%" fill="#3fae5a"><path d="M50 72 L50 94" stroke="#3fae5a" stroke-width="4" stroke-linecap="round"/><ellipse cx="50.0" cy="50.0" rx="7.0" ry="22.0" transform="rotate(0 50.0 50.0)"/><ellipse cx="59.5" cy="55.5" rx="6.1" ry="19.0" transform="rotate(30 59.5 55.5)"/><ellipse cx="40.5" cy="55.5" rx="6.1" ry="19.0" transform="rotate(-30 40.5 55.5)"/><ellipse cx="63.0" cy="64.5" rx="4.8" ry="15.0" transform="rotate(60 63.0 64.5)"/><ellipse cx="37.0" cy="64.5" rx="4.8" ry="15.0" transform="rotate(-60 37.0 64.5)"/><ellipse cx="58.9" cy="73.3" rx="4.0" ry="9.0" transform="rotate(98 58.9 73.3)"/><ellipse cx="41.1" cy="73.3" rx="4.0" ry="9.0" transform="rotate(-98 41.1 73.3)"/></svg>';
 
 const KINDS = {
   spotlight:{label:'Product Spotlight', help:'Feature a product', color:'B'},
@@ -238,6 +239,16 @@ function spotGrid(m){
     const r=PHOTO.r0+i, cc=PHOTO.c0+j; grid[r][cc]='{I}';
     photo.cells[r*COLS+cc]=`background-image:url("${f.img}");background-size:calc(var(--cw)*${BW.toFixed(3)}) calc(var(--cw)*${BH.toFixed(3)});background-position:calc(var(--cw)*${(ox-x).toFixed(3)}) calc(var(--cw)*${(oy-y).toFixed(3)})`;
   }
+  // ring of leaf tiles around the photo (every other tile)
+  let r0=99,r1=-1,c0=99,c1=-1;
+  for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) if(grid[r][cc]==='{I}'){ r0=Math.min(r0,r); r1=Math.max(r1,r); c0=Math.min(c0,cc); c1=Math.max(c1,cc); }
+  if(r1>=0){
+    for(let r=r0-1;r<=r1+1;r++) for(let cc=c0-1;cc<=c1+1;cc++){
+      if(r<0||r>=ROWS||cc<0||cc>=TXT.c0-1) continue;
+      const edge=r===r0-1||r===r1+1||cc===c0-1||cc===c1+1;
+      if(edge && (r+cc)%2===0 && grid[r][cc]===' ') grid[r][cc]='{L}';
+    }
+  }
   const T=s=>tokenize(normalize(s||''));
   const hd=(f.head||((f.cat||'')+' PICK')).trim();
   const head=T(c?`{${c}} ${hd} {${c}}`:hd);
@@ -279,6 +290,7 @@ function makeBoard(container){
   }
   const paint=(cell,tok)=>{ cell.cur=tok; cell.el.style.cssText='';
     if(tok==='{I}'){ cell.curBg=cell.bg; cell.el.className='flap ph'; cell.el.textContent=''; cell.el.style.cssText=cell.bg; }
+    else if(tok==='{L}'){ cell.el.className='flap'; cell.el.innerHTML=LEAF_SVG; }
     else if(tok==='{E}'){ cell.el.className='flap'; cell.el.innerHTML='<span style="display:inline-block;transform:scaleX(-1)">E</span>'; }
     else if(tok.length>1){ cell.el.className='flap c-'+tok[1]; cell.el.textContent=''; }
     else { cell.el.className='flap'; cell.el.textContent=tok===' '?'':tok; } };
