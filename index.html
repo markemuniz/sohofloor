@@ -31,20 +31,24 @@
   @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(80deg);filter:brightness(.6)}100%{transform:rotateX(0)}}
   .flap.c-R{background:var(--R)} .flap.c-O{background:var(--O)} .flap.c-Y{background:var(--Y)} .flap.c-G{background:var(--G)}
   .flap.c-B{background:var(--B)} .flap.c-V{background:var(--V)} .flap.c-W{background:var(--W)} .flap.c-K{background:var(--K)}
-  .stage{gap:3vw}
-  .panel{display:none;width:30vw;max-height:90vh}
-  .stage.split .panel{display:block;animation:slidein .5s ease-out}
-  @keyframes slidein{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
-  .pcard{background:#fbf6ec;color:#1d1b18;border-radius:1.6vw;padding:1.8vw;display:flex;flex-direction:column;gap:.7vh;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-  .pimg{background:#fff;border-radius:1vw;aspect-ratio:1/1;max-height:38vh;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:1vh}
+  /* split layout: board glides left + shrinks, photo card slides in */
+  body.tv{--u:min(1vw,1.78vh)}
+  #boardHost{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transform-origin:center center;
+    transition:transform .9s cubic-bezier(.65,0,.35,1)}
+  .panel{position:absolute;right:calc(var(--u)*3);top:50%;width:calc(var(--u)*30);max-height:92vh;
+    opacity:0;transform:translate(6vw,-50%);pointer-events:none;
+    transition:opacity .45s ease, transform .6s cubic-bezier(.2,.8,.2,1)}
+  .stage.split .panel{opacity:1;transform:translate(0,-50%);transition-delay:.55s}
+  .pcard{background:#fbf6ec;color:#1d1b18;border-radius:calc(var(--u)*1.6);padding:calc(var(--u)*1.8);display:flex;flex-direction:column;gap:calc(var(--u)*.45);box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:92vh;overflow:hidden}
+  .pimg{background:#fff;border-radius:calc(var(--u)*1);height:calc(var(--u)*22);flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:calc(var(--u)*.6)}
   .pimg img{max-width:92%;max-height:92%;object-fit:contain}
-  .ptag{align-self:flex-start;color:#fff;font-family:"Barlow Condensed",sans-serif;font-weight:700;letter-spacing:.12em;font-size:1.25vw;padding:.3vw .9vw;border-radius:99px;text-transform:uppercase}
-  .pbrand{font-size:1.1vw;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#7a6f63;margin-top:.6vh}
-  .pname{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:2.6vw;line-height:1.02;text-transform:uppercase}
+  .ptag{align-self:flex-start;color:#fff;font-family:"Barlow Condensed",sans-serif;font-weight:700;letter-spacing:.12em;font-size:calc(var(--u)*1.25);padding:calc(var(--u)*.3) calc(var(--u)*.9);border-radius:99px;text-transform:uppercase}
+  .pbrand{font-size:calc(var(--u)*1.1);font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#7a6f63;margin-top:calc(var(--u)*.3)}
+  .pname{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:calc(var(--u)*2.6);line-height:1.02;text-transform:uppercase}
   .pname .re{display:inline-block;transform:scaleX(-1)}
-  .psize{font-size:1vw;color:#7a6f63}
-  .pdesc{font-size:1.05vw;line-height:1.45;margin-top:.6vh;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
-  .pprice{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:3.2vw;color:#e0401c;margin-top:.4vh}
+  .psize{font-size:calc(var(--u)*1);color:#7a6f63}
+  .pdesc{font-size:calc(var(--u)*1.05);line-height:1.45;margin-top:calc(var(--u)*.3);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .pprice{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:calc(var(--u)*3.2);color:#e0401c}
   .hint{position:fixed;bottom:10px;right:14px;font-size:12px;color:#55555c;opacity:0;transition:opacity .4s}
   body.tv:hover .hint{opacity:1}
 
@@ -312,13 +316,23 @@ function startTV(){
     </div></div></div><div class="hint">Click for fullscreen · arrow keys to skip</div>`;
   const stage=document.getElementById('stage'), panel=document.getElementById('panel');
   let withPanel=false;
-  const fit=()=>{
-    const w=innerWidth*(withPanel?.60:.94);
-    const byW=w/(COLS*1.12+1.1), byH=innerHeight*.9/(ROWS*1.32+(ROWS-1)*.12+1.1);
-    document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px');
+  const host=document.getElementById('boardHost');
+  // Board is always built at full size; the split view just scales it down and slides it left (smooth, no reflow).
+  const place=()=>{
+    if(!withPanel){ host.style.transform='translate(-50%,-50%)'; return; }
+    const W=innerWidth, u=Math.min(W/100, innerHeight*1.78/100);
+    const panelLeft=W-u*3-u*30, gap=u*3, avail=panelLeft-gap-u*3;
+    const bw=host.offsetWidth, sc=Math.min(1, avail/bw);
+    const cx=u*3+avail/2, dx=cx-W/2;
+    host.style.transform=`translate(calc(-50% + ${dx}px),-50%) scale(${sc})`;
   };
+  const fit=()=>{
+    const byW=innerWidth*.94/(COLS*1.12+1.1), byH=innerHeight*.9/(ROWS*1.32+(ROWS-1)*.12+1.1);
+    document.documentElement.style.setProperty('--cw', Math.floor(Math.min(byW,byH))+'px');
+    place();
+  };
+  const board=makeBoard(host);
   fit(); addEventListener('resize',fit);
-  const board=makeBoard(document.getElementById('boardHost'));
   let state=null, idx=-1, timer=null;
   const playlist=()=>{ const l=(state.messages||[]).filter(isLive); if(state.settings?.clock && l.length) l.push({clock:true}); return l; };
   function showPanel(m){
@@ -334,7 +348,7 @@ function startTV(){
       document.getElementById('pDesc').textContent=f.desc||'';
       document.getElementById('pPrice').textContent=f.price?'$'+String(f.price).replace(/^\$/,''):'';
     }
-    if(on!==withPanel){ withPanel=on; stage.classList.toggle('split',on); fit(); }
+    if(on!==withPanel){ withPanel=on; stage.classList.toggle('split',on); place(); }
   }
   function next(step=1){
     clearTimeout(timer); const list=playlist();
